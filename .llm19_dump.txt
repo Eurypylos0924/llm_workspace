@@ -1,0 +1,504 @@
+=== cell 0 (code) id=7d7540c5 ===
+import pandas as pd
+
+df = pd.read_csv("data/cs_inquiries.csv", encoding="utf-8-sig")
+print(df[["content", "category_hint"]].head(3).to_string(index=False))
+
+=== cell 1 (code) id=ddf7a5c1 ===
+import os
+from openai import OpenAI
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# NVIDIA(OpenAI 호환 API) 클라이언트 초기화
+client = OpenAI(
+    base_url="https://integrate.api.nvidia.com/v1",
+    api_key=os.getenv("nvidiaapi_key"),
+)
+OPENAI_MODEL = "openai/gpt-oss-20b"
+
+# 역할 + 지시 + 맥락(제약)을 시스템 메시지에 담는다
+ROLE = (
+    "너는 승승장구몰의 친절한 CS 상담원이다. "          # 역할(Role)
+    "고객 문의에 존댓말로 공감하며 간결하게 답하라. "    # 지시(Instruction)
+    "확실하지 않은 정보는 '확인 후 안내드리겠습니다'라고 답하라."  # 맥락(Context: 제약)
+)
+
+def reply(content: str) -> str:
+    """고객 문의에 ROLE 페르소나로 정중한 답변을 생성한다."""
+    resp = client.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=[
+            {"role": "system", "content": ROLE},
+            {"role": "user", "content": f"고객 문의: {content}"}
+        ],
+        temperature=0.3,
+    )
+    return resp.choices[0].message.content
+
+=== cell 2 (code) id=32c5ebc6 ===
+print(reply("카드 결제가 두 번 청구된 것 같아요. 확인 부탁드립니다."))
+
+=== cell 3 (code) id=d138fe92 ===
+CATEGORIES = ["배송", "환불", "교환", "결제", "상품문의", "칭찬", "불만"]
+
+# few-shot = 정답 예시 몇 개를 먼저 보여주고 같은 식으로 답하게 하는 기법.
+FEWSHOT = """다음 고객 문의를 아래 7개 중 정확히 하나로 분류하라.
+카테고리: 배송 / 환불 / 교환 / 결제 / 상품문의 / 칭찬 / 불만
+카테고리 이름 한 단어만 출력하라(다른 말 금지).
+
+[예시]
+문의: 반품하면 배송비는 누가 부담하나요?           → 환불
+문의: 색상이 사진과 달라요. 다른 색으로 바꿔주세요.  → 교환
+문의: 상담원분이 정말 친절하셨어요. 감사합니다.      → 칭찬
+문의: 카드가 두 번 청구됐어요.                      → 결제
+"""
+
+=== cell 4 (code) id=157f7de3 ===
+import os
+from openai import OpenAI
+from dotenv import load_dotenv
+
+load_dotenv()
+
+client = OpenAI(
+    base_url="https://integrate.api.nvidia.com/v1",
+    api_key=os.getenv("nvidiaapi_key"),
+)
+OPENAI_MODEL = "openai/gpt-oss-20b"
+
+CATEGORIES = ["배송", "환불", "교환", "결제", "상품문의", "칭찬", "불만"]
+
+def classify(content: str) -> str:
+    """문의 한 건을 7개 카테고리 중 하나로 분류한다(few-shot 사용)."""
+    resp = client.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=[
+            {"role": "user", "content": f"{FEWSHOT}\n[분류할 문의]\n문의: {content} →"}
+        ],
+    )
+    out = resp.choices[0].message.content.strip()
+    for c in CATEGORIES:        # 군더더기가 붙어도 7개 중 포함된 단어를 골라낸다
+        if c in out:
+            return c
+    return "기타"
+
+=== cell 5 (code) id=d5a10e9e ===
+print(classify("카드가 두 번 청구됐어요"))        # → 결제
+print(classify("포장이 찢어진 채로 왔어요"))       # → 불만 또는 교환
+print(classify("이 제품 방수 되나요?"))            # → 상품문의
+
+=== cell 6 (code) id=a3af3605 ===
+import json
+from openai import OpenAI
+from dotenv import load_dotenv
+
+client = OpenAI(
+    base_url="https://integrate.api.nvidia.com/v1",
+    api_key=os.getenv("nvidiaapi_key"),
+)
+OPENAI_MODEL = "openai/gpt-oss-20b"
+
+prompt = (
+    "다음 고객 문의를 분석해 JSON으로만 답하라.\n"
+    'key: category, urgent, summary\n'
+    "문의: 어제 받은 제품이 박살나서 왔어요."
+)
+resp = client.chat.completions.create(
+    model=OPENAI_MODEL,
+    messages=[{"role": "user", "content": prompt}]
+)
+data = json.loads(resp.choices[0].message.content)   # 운이 나쁘면 모델이 설명을 덧붙여 실패할 수 있음
+
+=== cell 7 (code) id=6a073799 ===
+import json
+from openai import OpenAI
+from dotenv import load_dotenv
+
+client = OpenAI(
+    base_url="https://integrate.api.nvidia.com/v1",
+    api_key=os.getenv("nvidiaapi_key"),
+)
+OPENAI_MODEL = "openai/gpt-oss-20b"
+
+def triage(content: str) -> dict:
+    """문의를 분석해 category/urgent/summary 를 담은 dict로 돌려준다."""
+    resp = client.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "너는 고객 문의를 분석하여 JSON 형식으로만 답변하는 도우미다.\n"
+                    "반드시 다음 키를 포함한 JSON 객체만 응답하라:\n"
+                    "- category: (배송/환불/교환/결제/상품문의/칭찬/불만 중 하나)\n"
+                    "- urgent: (true/false)\n"
+                    "- summary: (20자 이내 한국어)"
+                )
+            },
+            {
+                "role": "user",
+                "content": f"문의: {content}"
+            }
+        ],
+        temperature=0,
+        response_format={"type": "json_object"},   # ← JSON만 출력하도록 강제
+    )
+    return json.loads(resp.choices[0].message.content)   # JSON 문자열 → 파이썬 dict
+
+r = triage("어제 받은 제품이 박살나서 왔어요. 당장 환불해주세요!")
+print(r)
+print("긴급?", r["urgent"], "/ 분류:", r["category"])
+
+=== cell 8 (code) id=7a1a55c3 ===
+import os
+import pathlib
+import json
+import pandas as pd
+from openai import OpenAI
+
+# OpenAI 클라이언트 초기화
+client = OpenAI(
+    base_url="https://integrate.api.nvidia.com/v1",
+    api_key=os.getenv("nvidiaapi_key"),
+)
+OPENAI_MODEL = "openai/gpt-oss-20b"
+
+# 경로 설정 및 CSV 로드 (cs_inquiries.csv = 고객 문의 60건. category_hint 컬럼이 정답 라벨)
+DATA_PATH = pathlib.Path("./data")
+df = pd.read_csv(DATA_PATH / "cs_inquiries.csv")
+
+print("문의 건수:", len(df))
+print(df[["content", "category_hint"]].head(3).to_string(index=False))
+
+=== cell 9 (code) id=e55da1b9 ===
+ROLE = (
+    "너는 승승장구몰의 친절한 CS 상담원이다. "
+    "고객 문의에 존댓말로 공감하며 간결하게 답하라. "
+    "확실하지 않은 정보는 '확인 후 안내드리겠습니다'라고 답하라."
+)
+
+def reply(content: str) -> str:
+    resp = client.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=[
+            {"role": "system", "content": ROLE},
+            {"role": "user", "content": f"고객 문의: {content}"}
+        ],
+        temperature=0.3,
+    )
+    return resp.choices[0].message.content
+
+sample = df.iloc[0]["content"]
+print("문의:", sample)
+print("답변:", reply(sample))
+
+=== cell 10 (code) id=7bdbc52b ===
+CATEGORIES = ["배송", "환불", "교환", "결제", "상품문의", "칭찬", "불만"]
+
+FEWSHOT = """다음 고객 문의를 아래 7개 중 정확히 하나로 분류하라.
+카테고리: 배송 / 환불 / 교환 / 결제 / 상품문의 / 칭찬 / 불만
+카테고리 이름 한 단어만 출력하라(다른 말 금지).
+
+[예시]
+문의: 반품하면 배송비는 누가 부담하나요?           → 환불
+문의: 색상이 사진과 달라요. 다른 색으로 바꿔주세요.  → 교환
+문의: 상담원분이 정말 친절하셨어요. 감사합니다.      → 칭찬
+문의: 카드가 두 번 청구됐어요.                      → 결제
+"""
+
+def classify(content: str) -> str:
+    resp = client.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=[
+            {"role": "user", "content": f"{FEWSHOT}\n[분류할 문의]\n문의: {content} →"}
+        ],
+        temperature=0,  # 일관성을 위해 0 설정
+    )
+    out = resp.choices[0].message.content.strip()
+    for c in CATEGORIES:
+        if c in out:
+            return c
+    return "기타"
+
+# 60건 전부 분류 → 정답 라벨(category_hint)과 비교
+df["pred"] = df["content"].apply(classify)
+correct = (df["pred"] == df["category_hint"]).sum()
+print(f"분류 정확도: {correct/len(df):.1%}  ({correct}/{len(df)})")
+
+# 틀린 사례 몇 개 출력
+wrong = df[df["pred"] != df["category_hint"]]
+if len(wrong) > 0:
+    print("\n틀린 사례(일부):")
+    print(wrong[["content", "category_hint", "pred"]].head().to_string(index=False))
+
+=== cell 11 (code) id=efa196ed ===
+CATEGORIES = ["배송", "환불", "교환", "결제", "상품문의", "칭찬", "불만"]
+
+FEWSHOT = """다음 고객 문의를 아래 7개 중 정확히 하나로 분류하라.
+카테고리: 배송 / 환불 / 교환 / 결제 / 상품문의 / 칭찬 / 불만
+카테고리 이름 한 단어만 출력하라(다른 말 금지)."""
+
+def classify(content: str) -> str:
+    resp = client.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=[
+            {"role": "user", "content": f"{FEWSHOT}\n[분류할 문의]\n문의: {content} →"}
+        ],
+        temperature=0,  # 일관성을 위해 0 설정
+    )
+    out = resp.choices[0].message.content.strip()
+    for c in CATEGORIES:
+        if c in out:
+            return c
+    return "기타"
+
+# 60건 전부 분류 → 정답 라벨(category_hint)과 비교
+df["pred"] = df["content"].apply(classify)
+correct = (df["pred"] == df["category_hint"]).sum()
+print(f"분류 정확도: {correct/len(df):.1%}  ({correct}/{len(df)})")
+
+# 틀린 사례 몇 개 출력
+wrong = df[df["pred"] != df["category_hint"]]
+if len(wrong) > 0:
+    print("\n틀린 사례(일부):")
+    print(wrong[["content", "category_hint", "pred"]].head().to_string(index=False))
+
+
+=== cell 12 (code) id=15243394 ===
+def triage(content: str) -> dict:
+    resp = client.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "너는 고객 문의를 분석하여 JSON 형식으로만 답변하는 도우미다.\n"
+                    "반드시 다음 키를 포함한 JSON 객체만 응답하라:\n"
+                    "- category: (배송/환불/교환/결제/상품문의/칭찬/불만 중 하나)\n"
+                    "- urgent: (true/false)\n"
+                    "- summary: (20자 이내 한국어)"
+                )
+            },
+            {
+                "role": "user",
+                "content": f"문의: {content}"
+            }
+        ],
+        temperature=0,
+        response_format={"type": "json_object"},  # ← JSON 출력 강제
+    )
+    return json.loads(resp.choices[0].message.content)
+
+r = triage("어제 받은 제품이 박살나서 왔어요. 당장 환불해주세요!")
+print(r)
+print("긴급?", r["urgent"], "/ 분류:", r["category"])
+
+=== cell 13 (code) id=5cbf5f85 ===
+import os
+import pathlib
+import pandas as pd
+from collections import Counter
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://integrate.api.nvidia.com/v1",
+    api_key=os.getenv("nvidiaapi_key"),
+)
+OPENAI_MODEL = "openai/gpt-oss-20b"
+DATA_PATH = pathlib.Path("./data")
+
+CATEGORIES = ["배송", "환불", "교환", "결제", "상품문의", "칭찬", "불만"]
+
+FEWSHOT = """다음 고객 문의를 아래 7개 중 정확히 하나로 분류하라.
+카테고리: 배송 / 환불 / 교환 / 결제 / 상품문의 / 칭찬 / 불만
+카테고리 이름 한 단어만 출력하라(다른 말 금지).
+"""
+# [예시]
+# 문의: 반품하면 배송비는 누가 부담하나요?           → 환불
+# 문의: 색상이 사진과 달라요. 다른 색으로 바꿔주세요.  → 교환
+# 문의: 상담원분이 정말 친절하셨어요. 감사합니다.      → 칭찬
+# 문의: 카드가 두 번 청구됐어요.                      → 결제
+
+
+def classify(content: str) -> str:
+    resp = client.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=[
+            {"role": "user", "content": f"{FEWSHOT}\n[분류할 문의]\n문의: {content} →"}
+        ],
+        temperature=0,
+    )
+    out = resp.choices[0].message.content.strip()
+    for c in CATEGORIES:
+        if c in out:
+            return c
+    return "기타"
+
+df = pd.read_csv(DATA_PATH / "cs_inquiries.csv", encoding="utf-8-sig")
+df["pred"] = df["content"].apply(classify)
+
+correct = (df["pred"] == df["category_hint"]).sum()
+print(f"전체 정확도: {correct/len(df):.1%}  ({correct}/{len(df)})")
+
+# [핵심] 틀린 케이스만 모아서 '왜 틀렸나'를 사람이 읽을 수 있게 출력
+wrong = df[df["pred"] != df["category_hint"]]
+print(f"틀린 케이스: {len(wrong)}건")
+for i, (_, r) in enumerate(wrong.iterrows(), 1):
+    print(f"[{i}] 정답={r['category_hint']} / 예측={r['pred']}")
+    print(f"     내용: {r['content']}")
+
+=== cell 14 (code) id=a9c016f3 ===
+import os
+import pathlib
+import pandas as pd
+from collections import Counter
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://integrate.api.nvidia.com/v1",
+    api_key=os.getenv("nvidiaapi_key"),
+)
+OPENAI_MODEL = "openai/gpt-oss-20b"
+DATA_PATH = pathlib.Path("./data")
+
+CATEGORIES = ["배송", "환불", "교환", "결제", "상품문의", "칭찬", "불만"]
+
+FEWSHOT = """다음 고객 문의를 아래 7개 중 정확히 하나로 분류하라.
+카테고리: 배송 / 환불 / 교환 / 결제 / 상품문의 / 칭찬 / 불만
+카테고리 이름 한 단어만 출력하라(다른 말 금지).
+
+[예시]
+문의: 반품하면 배송비는 누가 부담하나요?           → 환불
+문의: 색상이 사진과 달라요. 다른 색으로 바꿔주세요.  → 교환
+문의: 상담원분이 정말 친절하셨어요. 감사합니다.      → 칭찬
+문의: 카드가 두 번 청구됐어요.                      → 결제
+"""
+
+def classify(content: str) -> str:
+    resp = client.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=[
+            {"role": "user", "content": f"{FEWSHOT}\n[분류할 문의]\n문의: {content} →"}
+        ],
+        temperature=0,
+    )
+    out = resp.choices[0].message.content.strip()
+    for c in CATEGORIES:
+        if c in out:
+            return c
+    return "기타"
+
+df = pd.read_csv(DATA_PATH / "cs_inquiries.csv", encoding="utf-8-sig")
+df["pred"] = df["content"].apply(classify)
+
+correct = (df["pred"] == df["category_hint"]).sum()
+print(f"전체 정확도: {correct/len(df):.1%}  ({correct}/{len(df)})")
+
+# [핵심] 틀린 케이스만 모아서 '왜 틀렸나'를 사람이 읽을 수 있게 출력
+wrong = df[df["pred"] != df["category_hint"]]
+print(f"틀린 케이스: {len(wrong)}건")
+for i, (_, r) in enumerate(wrong.iterrows(), 1):
+    print(f"[{i}] 정답={r['category_hint']} / 예측={r['pred']}")
+    print(f"     내용: {r['content']}")
+
+=== cell 15 (code) id=7652f307 ===
+import os
+import pathlib
+import pandas as pd
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://integrate.api.nvidia.com/v1",
+    api_key=os.getenv("nvidiaapi_key"),
+)
+OPENAI_MODEL = "openai/gpt-oss-20b"
+DATA_PATH = pathlib.Path("./data")
+
+df = pd.read_csv(DATA_PATH / "cs_inquiries.csv", encoding="utf-8-sig")
+CATEGORIES = ["배송", "환불", "교환", "결제", "상품문의", "칭찬", "불만"]
+
+FEWSHOT_BASE = """다음 고객 문의를 아래 7개 중 정확히 하나로 분류하라.
+카테고리: 배송 / 환불 / 교환 / 결제 / 상품문의 / 칭찬 / 불만
+카테고리 이름 한 단어만 출력하라(다른 말 금지).
+
+[예시]
+문의: 반품하면 배송비는 누가 부담하나요?           → 환불
+문의: 색상이 사진과 달라요. 다른 색으로 바꿔주세요.  → 교환
+문의: 상담원분이 정말 친절하셨어요. 감사합니다.      → 칭찬
+문의: 카드가 두 번 청구됐어요.                      → 결제
+"""
+
+# 경계 예시 2개 추가
+FEWSHOT_PLUS = FEWSHOT_BASE + """문의: 배송이 자꾸 늦어서 너무 불편해요.   → 불만
+문의: 이 제품 방수 되나요?                  → 상품문의
+"""
+
+def make_classifier(fewshot):
+    def classify(content):
+        resp = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=[
+                {"role": "user", "content": f"{fewshot}\n[분류할 문의]\n문의: {content} →"}
+            ],
+            temperature=0,
+        )
+        out = resp.choices[0].message.content.strip()
+        return next((c for c in CATEGORIES if c in out), "기타")
+    return classify
+
+def accuracy(classify):
+    pred = df["content"].apply(classify)
+    return (pred == df["category_hint"]).mean()
+
+print(f"예시 추가 전: {accuracy(make_classifier(FEWSHOT_BASE)):.1%}")
+print(f"예시 추가 후: {accuracy(make_classifier(FEWSHOT_PLUS)):.1%}")
+
+=== cell 16 (code) id=75233780 ===
+import os
+import pathlib
+import json
+import pandas as pd
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://integrate.api.nvidia.com/v1",
+    api_key=os.getenv("nvidiaapi_key"),
+)
+OPENAI_MODEL = "openai/gpt-oss-20b"
+DATA_PATH = pathlib.Path("./data")
+
+df = pd.read_csv(DATA_PATH / "cs_inquiries.csv", encoding="utf-8-sig")
+
+def triage(content: str) -> dict:
+    resp = client.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "다음 고객 문의를 분석해 JSON으로만 답하라.\n"
+                    "키: category(배송/환불/교환/결제/상품문의/칭찬/불만 중 하나), "
+                    "urgent(true/false), summary(20자 이내), "
+                    "suggested_reply(고객에게 보낼 추천 답변 1문장)"  # ← 추가한 키
+                )
+            },
+            {
+                "role": "user",
+                "content": f"문의: {content}"
+            }
+        ],
+        temperature=0,
+        response_format={"type": "json_object"},  # ← JSON 강제
+    )
+    return json.loads(resp.choices[0].message.content)
+
+# 앞 15건에 적용 → 긴급 건만 출력
+print("=== 긴급 문의 (urgent=True) ===")
+for content in df["content"].head(15):
+    r = triage(content)
+    if r.get("urgent"):
+        print(f"- [{r['category']}] {content}")
+        print(f"    추천답변: {r['suggested_reply']}")
+
