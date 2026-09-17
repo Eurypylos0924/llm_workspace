@@ -1,0 +1,326 @@
+=== cell 58 (markdown) id=07cabbc1 ===
+## 3. RAG 성능 평가 (Evaluation)
+
+RAG는 단순히 돌아가는지보다 **잘 찾고, 근거 있게 답하는지**를 확인해야 개선이 가능합니다.
+
+평가 범위는 두 가지로 둡니다.
+
+1. **Retrieval 평가**: 상위 K개 안에 필요한 근거가 들어왔는가
+2. **Generation 평가**: 답변이 문서에 근거했는가
+
+<img src="image/eval.png" width="380">
+
+Retrieval은 **Recall@K 중심**으로 보고,  
+Generation은 **Faithfulness(문서 근거를 벗어나지 않았는가) 중심**으로 봅니다.
+
+
+=== cell 59 (markdown) id=00b49c72 ===
+### 3.1 왜 RAG 평가가 중요한가?
+
+다음과 같은 상황은 모두 **평가가 부실할 때** 흔히 발생하는 문제들입니다.
+
+- 벡터 유사도 기반 검색만 사용하다 보니, 실제로 중요한 문서가 반복적으로 검색되지 않음  
+- 검색은 잘 되었는데 LLM이 문서를 근거로 답하지 않고 자체 추론으로 대답함  
+- Chunk 크기나 슬라이딩 윈도우 전략을 바꿔도 어떤 설정이 더 효과적인지 판단할 근거가 없음  
+- Query Rewriting/Expansion을 적용했지만, 오히려 Recall이 떨어져 성능이 악화됨  
+- BM25·Vector·Hybrid Retrieval 실험을 해도 정량적 지표 없이 “감”으로 방식이 선택됨  
+
+따라서 **RAG 파이프라인을 안정적으로 개선하기 위해서는 체계적 평가가 필수적입니다.**
+
+=== cell 60 (markdown) id=c0f54548 ===
+### 3.2 Retrieval Evaluation (Hit@K / Recall@K 중심)
+
+Retrieval 평가는 크게 두 가지를 봅니다.  
+하나는 **정답 근거를 최소 1개라도 놓치지 않았는지**, 다른 하나는 **관련 청크를 얼마나 폭넓게 회수했는지**입니다.
+
+| 지표 | 정의 | 언제 보면 좋은가 |
+|---|---|---|
+| **Hit@K** | 상위 K개 안에 수동으로 지정한 관련 청크가 **하나라도** 들어왔는가 | 정답 근거를 최소 1개라도 찾았는지 빠르게 확인할 때 |
+| **Recall@K** | **수동으로 지정한 관련 청크 전체** 중에서, 상위 K개 안에 **몇 개가 들어왔는가** | 필요한 정보를 얼마나 빠짐없이 회수했는지 볼 때 |
+| **Precision@K** | **상위 K개 결과** 중에서, 수동으로 지정한 관련 청크가 **몇 개 들어왔는가** | 상위 결과에 잡음이 많은지 볼 때 |
+| **MRR / nDCG** | 관련 근거가 얼마나 앞순위에 배치되었는가 | 순위 품질까지 함께 보고 싶을 때 |
+
+여기서 `관련 청크`는 retriever가 가져온 결과가 아니라, 질문별로 **미리 수동 확인해 둔 정답 청크**를 뜻합니다.
+즉, Recall은 **정답 전체 기준으로 얼마나 회수했는지**, Precision은 **가져온 결과 기준으로 얼마나 정확한지**를 보는 지표입니다.
+
+이 자료에서는 표준 지표인 **Hit@K**와 **Recall@K**를 사용합니다.
+- **Hit@K**: 상위 K개 안에 관련 청크가 하나라도 포함되었는지 평가
+- **Recall@K**: 수동으로 지정한 관련 청크가 상위 K개 안에 얼마나 포함되었는지 평가
+
+> 참고: 질문마다 관련 청크를 1개만 두면 Recall@K가 Hit@K와 같아질 수 있습니다.  
+가능하면 질문별로 관련 청크를 2개 이상 지정해 두면 Recall@K를 더 분명하게 해석할 수 있습니다.
+
+
+=== cell 61 (markdown) id=a779d472 ===
+#### Retrieval 평가용 데이터 구조
+
+`test_cases`에는 질문과 관련 청크 ID를 함께 둡니다.
+
+- `relevant_doc_ids`: 수동 확인한 관련 청크 ID
+
+
+
+=== cell 62 (markdown) id=5cb3540f ===
+#### 실습: Retrieval 지표 계산
+
+
+
+=== cell 63 (code) id=b2cd57c9 ===
+# 평가에서는 모든 검색 결과가 아니라 상위 k개만 잘 가져왔는지 보는 경우가 많습니다.
+def retrieve_docs(retriever, query, k=5):
+    return retriever.invoke(query)[:k]  # 검색 결과 중 상위 k개만 평가에 사용합니다.
+
+=== cell 64 (markdown) id=9f2aa825 ===
+#### 수동 평가셋 정의
+
+아래 `test_cases`는 `split_docs`를 확인해 고른 수동 평가셋입니다. 
+
+=== cell 65 (code) id=e1a3f47b ===
+# split_docs를 확인해 고른 수동 평가셋입니다.
+# - query: 실제 사용자가 할 법한 질문
+# - relevant_doc_ids: 새 청킹 기준에서 확인한 관련 청크 ID
+
+test_cases = [
+    {
+        "query": "왜 금융투자상품 투자는 반드시 본인 명의로 해야 하는가?",
+        "relevant_doc_ids": [36],
+    },
+    {
+        "query": "투자설명서와 약관을 받아 두고 보관해야 하는 이유는 무엇인가?",
+        "relevant_doc_ids": [38],
+    },
+    {
+        "query": "가족이나 지인에게 계좌번호와 비밀번호를 알려주면 왜 위험한가?",
+        "relevant_doc_ids": [39],
+    },
+    {
+        "query": "전산장애가 있었을 때 매도의사를 입증하려면 어떤 자료를 남겨야 하는가?",
+        "relevant_doc_ids": [444, 446],
+    },
+    {
+        "query": "모바일폰으로 금융거래를 할 때 꼭 챙겨야 할 보안 수칙은 무엇인가?",
+        "relevant_doc_ids": [63],
+    },
+    {
+        "query": "직원에게 계좌관리를 맡기기로 했다면 계약서에 어떤 내용을 구체적으로 적어야 하는가?",
+        "relevant_doc_ids": [101],
+    },
+    {
+        "query": "내가 맡긴 적 없는데 직원이 알아서 거래했다면 어떤 유형의 분쟁으로 볼 수 있는가?",
+        "relevant_doc_ids": [126],
+    },
+    {
+        "query": "직원에게 투자판단을 맡긴 계약은 법적으로 어떤 성격으로 이해해야 하는가?",
+        "relevant_doc_ids": [162],
+    },
+    {
+        "query": "경험이 부족한 투자자에게 어떤 식으로 권하면 부당권유 문제가 생길 수 있는가?",
+        "relevant_doc_ids": [198],
+    },
+    {
+        "query": "불완전판매는 왜 부당권유의 한 유형으로 함께 다뤄지는가?",
+        "relevant_doc_ids": [125],
+    },
+    {
+        "query": "주문이 다르게 체결되거나 누락됐다면 회사는 무엇을 확인했어야 하는가?",
+        "relevant_doc_ids": [375, 376],
+    },
+    {
+        "query": "보이스피싱 피해를 입었다면 어떤 순서로 대응해야 하는가?",
+        "relevant_doc_ids": [469],
+    },
+    {
+        "query": "유사수신 업체는 어떤 특징을 보이며 왜 위험한가?",
+        "relevant_doc_ids": [456],
+    },
+    {
+        "query": "회사와 먼저 직접 분쟁을 풀어보는 방식이 왜 가장 손쉽고 합리적일 수 있는가?",
+        "relevant_doc_ids": [108, 109],
+    },
+    {
+        "query": "금융투자회사 직원이 손실을 보전해 주겠다고 약속하면 왜 문제가 되는가?",
+        "relevant_doc_ids": [13, 543],
+    },
+]
+
+test_cases[:5]  # 평가셋 구조가 잘 들어갔는지 앞부분만 확인합니다.
+
+
+=== cell 66 (markdown) id=b68a570a ===
+#### Hit@K / Recall@K 계산
+
+
+
+=== cell 67 (code) id=c40309ae ===
+# 검색 결과에서 문서 id만 뽑아 비교하기 쉽게 만듭니다.
+def retrieved_ids(docs):  # 검색 결과를 ID 목록으로 바꿉니다.
+    return [doc.metadata.get("id") for doc in docs]  # 검색된 문서들의 id만 뽑습니다.
+
+# 상위 K개 안에 관련 청크가 하나라도 들어왔는지 계산합니다.
+def hit_at_k(retrieved_docs, relevant_doc_ids):
+    pred_ids = {doc.metadata.get("id") for doc in retrieved_docs}  # 상위 K개의 문서 ID 집합입니다.
+    return bool(pred_ids & set(relevant_doc_ids))
+
+# 수동으로 지정한 관련 청크를 상위 K개가 얼마나 회수했는지 계산합니다.
+def recall_at_k(retrieved_docs, relevant_doc_ids):
+    pred_ids = {doc.metadata.get("id") for doc in retrieved_docs}  # 상위 K개의 문서 ID 집합입니다.
+    matched_ids = [doc_id for doc_id in relevant_doc_ids if doc_id in pred_ids]  # 실제로 회수한 관련 청크만 남깁니다.
+    if not relevant_doc_ids:
+        return 0.0, []
+    return len(matched_ids) / len(relevant_doc_ids), matched_ids
+
+# 질문별 Hit@K 평균을 구합니다.
+def mean_hit_at_k(retriever, test_cases, k=5):
+    correct = 0  # Hit한 질문 수를 셉니다.
+    total = len(test_cases)
+
+    for case in test_cases:
+        retrieved_docs = retrieve_docs(retriever, case["query"], k=k)  # 각 질문의 top-k 결과를 가져옵니다.
+        if hit_at_k(retrieved_docs, case["relevant_doc_ids"]):
+            correct += 1
+
+    return correct / total
+
+# 질문별 Recall@K 평균을 구합니다.
+def mean_recall_at_k(retriever, test_cases, k=5):
+    scores = []  # 질문별 Recall@K 값을 모읍니다.
+    for case in test_cases:
+        retrieved_docs = retrieve_docs(retriever, case["query"], k=k)  # 각 질문의 top-k 결과를 가져옵니다.
+        recall, _ = recall_at_k(retrieved_docs, case["relevant_doc_ids"])  # 관련 청크를 얼마나 찾았는지 계산합니다.
+        scores.append(recall)
+    return sum(scores) / len(scores)
+
+
+=== cell 68 (markdown) id=682fada2 ===
+#### Hybrid Retrieval 상세 로그 보기
+
+
+
+=== cell 69 (code) id=ea717f75 ===
+def debug_retrieval_metrics(retriever, test_cases, k=5):  # 질문별 Hit@K와 Recall@K를 자세히 출력합니다.
+    for case in test_cases:
+        query = case["query"]
+        relevant_ids = case["relevant_doc_ids"]
+        retrieved_docs = retrieve_docs(retriever, query, k=k)
+        pred_ids = retrieved_ids(retrieved_docs)  # 출력용으로 top-k ID를 정리합니다.
+        recall, matched_ids = recall_at_k(retrieved_docs, relevant_ids)  # 관련 청크를 얼마나 찾았는지 계산합니다.
+        hit = hit_at_k(retrieved_docs, relevant_ids)  # 하나라도 찾았는지 계산합니다.
+
+        print(f"\n[질문] {query}")
+        print(f"- 예측 Top-{k} IDs: {pred_ids}")
+        print(f"- 수동 확인한 관련 IDs: {relevant_ids}")
+        print(f"- Hit@{k}: {hit}")
+        print(f"- Recall@{k}: {recall:.2f}")
+        print(f"- 회수된 관련 IDs: {matched_ids}")
+        print("-" * 50)
+
+print("=== Hybrid Retrieval 상세 로그 ===")
+debug_retrieval_metrics(hybrid_rrf, test_cases, k=5)
+
+=== cell 70 (code) id=a79d8ffd ===
+# 검색기별로 Hit@K와 Recall@K를 한 번에 비교합니다.
+print("Dense Hit@5:", mean_hit_at_k(dense_retriever, test_cases, k=5))
+print("Sparse Hit@5:", mean_hit_at_k(bm25_retriever, test_cases, k=5))
+print("Hybrid Hit@5:", mean_hit_at_k(hybrid_rrf, test_cases, k=5))
+
+print()
+
+print("Dense Recall@5:", mean_recall_at_k(dense_retriever, test_cases, k=5))
+print("Sparse Recall@5:", mean_recall_at_k(bm25_retriever, test_cases, k=5))
+print("Hybrid Recall@5:", mean_recall_at_k(hybrid_rrf, test_cases, k=5))
+
+print()
+print("권장 해석: Hit@K는 관련 청크를 하나라도 찾았는지 보여주고,")
+print("Recall@K는 수동으로 지정한 관련 청크를 얼마나 빠짐없이 회수했는지 보여줍니다.")
+
+
+=== cell 71 (markdown) id=76ed6e42 ===
+**관찰 포인트**
+
+- **Hit@K**가 높을수록 관련 청크를 하나라도 놓치지 않았다고 볼 수 있습니다.
+- **Recall@K**가 높을수록 수동으로 지정한 관련 청크를 더 넓게 회수했다고 해석할 수 있습니다.
+- 두 지표가 함께 높으면 관련 근거를 안정적으로 회수한 경우에 가깝습니다.
+- 두 지표가 어긋나면 청크 경계, 질문 표현, 관련 청크 라벨링 범위를 함께 점검하는 것이 좋습니다.
+
+
+=== cell 72 (markdown) id=4f599b45 ===
+### 3.3 Generation Evaluation (Faithfulness 중심)
+
+여기서 **Faithfulness**는 답변이 문서 근거를 벗어나지 않았는지,  
+즉 **문서에 없는 내용을 덧붙이지 않았는지**를 보는 지표입니다.
+
+생성 평가는 여러 축으로 볼 수 있지만, 먼저 Faithfulness를 확인합니다.  
+문서에 없는 말을 하지 않았는지 보는 것이 가장 기본적인 안전장치이기 때문입니다.
+
+참고로 이후에는 아래 항목도 함께 확장해서 볼 수 있습니다.
+
+| 평가 항목 | 무엇을 보는가 |
+|---|---|
+| **Faithfulness** | 답변이 문서 근거를 벗어나지 않았는가. 즉 문서에 없는 내용을 추측으로 덧붙이지 않았는가 |
+| **Relevance** | 답변이 질문 의도에 맞는가. 문서 내용이 맞더라도 엉뚱한 방향으로 답하지 않았는가 |
+| **Completeness** | 질문에 답하는 데 필요한 핵심 정보를 빠뜨리지 않았는가. 맞는 말만 했지만 중요한 부분이 비지 않았는가 |
+| **Citation Quality** | 출처 표시가 실제 답변 내용과 잘 연결되는가. 문서명·페이지가 자연스럽고 검증 가능하게 붙어 있는가 |
+
+
+=== cell 73 (markdown) id=822a84dc ===
+#### Generation Evaluation 실습: LLM을 활용한 Faithfulness 평가
+
+`LLM-as-a-Judge`는 다른 LLM에게 답변 품질을 평가하게 하는 방식입니다.
+사람이 모든 답변을 직접 읽기 어려울 때, **1차 자동 점검기**로 활용하기 좋습니다.
+
+
+=== cell 74 (code) id=6a157125 ===
+judge_prompt = """
+다음은 RAG 모델이 생성한 답변과, 참조 문서(Context)입니다.
+답변이 문서에 근거했는지 0~1 점수로 평가하세요.
+
+- 1: 문서에서 근거를 명확히 가지고 있음
+- 0: 문서에 없는 내용을 생성함 (hallucination)
+- 0.5: 부분적으로만 근거가 있음
+
+[질문]
+{query}
+
+[답변]
+{answer}
+
+[문맥]
+{context}
+
+0, 0.5, 1 중 하나의 숫자만 출력하세요.
+"""
+
+from langchain_core.prompts import PromptTemplate  # 문자열 프롬프트 템플릿을 만드는 도구입니다.
+# 문서 근거 여부만 따로 평가하기 위한 프롬프트입니다.
+judge_template = PromptTemplate.from_template(judge_prompt)  # 평가용 문자열을 재사용 가능한 템플릿으로 바꿉니다.
+
+def evaluate_answer(query, answer, context):  # 답변 하나의 faithfulness 점수를 계산합니다.
+    # 평가도 같은 NVIDIA 모델로 진행합니다.
+    judge_llm = ChatOpenAI(
+        base_url="https://integrate.api.nvidia.com/v1",
+        api_key=os.getenv("nvidiaapi_key"),
+        model="openai/gpt-oss-20b",
+        temperature=0,
+    )
+    judge_chain = judge_template | judge_llm | StrOutputParser()  # 평가 프롬프트와 평가 모델을 하나의 체인으로 묶습니다.
+    return judge_chain.invoke({"query": query, "answer": answer, "context": context})  # 답변의 faithfulness 점수를 계산합니다.
+
+
+=== cell 75 (code) id=4cdd1c94 ===
+# 실제로 테스트할 질문을 정합니다.
+query = "금융투자상품 투자는 누구의 명의로 해야 하는가?"
+
+docs = hybrid_rrf.invoke(query)  # Hybrid 검색으로 관련 문서를 가져옵니다.
+context = format_context_with_sources(docs)  # 검색 결과를 평가용 문맥으로 합칩니다.
+
+answer = llm.invoke(prompt.format(query=query, context=context)).content  # 문맥 기반 답변을 생성합니다.
+
+score = evaluate_answer(query, answer, context)  # 생성 답변이 문서에 근거했는지 채점합니다.
+
+print("=== 답변 ===")
+print(answer)
+
+print("\n=== Faithfulness Score ===")
+print(score)
+
+
