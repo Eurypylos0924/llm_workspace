@@ -1,0 +1,327 @@
+=== cell 16 (markdown) id=c73476c5 ===
+### 2.3 Hybrid Retrieval
+
+**Hybrid Retrieval**은 서로 다른 검색 방식의 약점을 서로 보완해, 정답 후보를 더 넓고 안정적으로 모으는 방식입니다.
+
+| 방식 | 장점 | 단점 |
+|---|---|---|
+| 벡터 기반 의미 검색 | 표현이 달라도 의미가 비슷하면 잘 잡아냄 | 정확한 용어, 숫자, 법령 표기 검색에 약할 수 있음 |
+| 키워드 기반 매칭 검색(BM25) | 용어 일치, 법령 구문, 코드, 표기 검색에 강함 | 표현이 조금만 달라도 쉽게 빗나갈 수 있음 |
+| Hybrid | Dense가 놓친 정확한 용어 일치를 Sparse가 보완하고, Sparse가 놓친 의미 유사 표현을 Dense가 보완함 | 시스템 복잡성이 증가함 |
+
+=== cell 17 (markdown) id=ffba282d ===
+##### Hybrid 결과 병합 방식
+
+Hybrid Retrieval에서는 Dense 검색과 BM25 검색을 각각 수행한 뒤, 두 결과를 어떤 방식으로 합칠지 결정해야 합니다.
+아래 표는 검색 결과를 병합할 때 자주 쓰는 대표적인 방법들입니다.
+
+| 방식 | 설명 | 특징 |
+|---|---|---|
+| **Parallel Retrieval** | Dense 검색과 BM25 검색을 각각 수행한 뒤 결과를 단순 병합 | 구현이 단순하지만 최종 순위가 불안정할 수 있음 |
+| **Weighted Score Fusion** | 두 검색 방식의 점수를 정규화한 뒤 가중 평균으로 결합 | 가중치(alpha, beta)를 수동으로 조정해야 함 |
+| **Reciprocal Rank Fusion (RRF)** | 각 검색 결과의 순위를 기반으로 점수를 계산해 결합 | 가중치 튜닝 없이도 안정적인 성능 |
+| **EnsembleRetriever** | LangChain에서 제공하는 하이브리드 검색 조합기 | 내부적으로 여러 검색 전략을 조합 |
+
+아래에서는 **RRF 기반 Hybrid Retrieval**을 중심으로 봅니다.
+
+
+
+=== cell 18 (markdown) id=2a5316ca ===
+##### Hybrid Retrieval 실습
+
+
+
+=== cell 19 (code) id=871f7482 ===
+#!uv add rank_bm25
+
+=== cell 20 (code) id=7ad72200 ===
+from langchain_community.retrievers import BM25Retriever  # 키워드 기반 BM25 검색기를 만듭니다.
+
+# Dense와 Sparse는 같은 split_docs 위에서 비교해야 Hybrid 결합 결과를 해석하기 쉽습니다.
+dense_retriever = vectorstore.as_retriever(search_kwargs={"k": 6})  # 임베딩 기반 검색기입니다.
+bm25_retriever = BM25Retriever.from_documents(split_docs)  # 같은 청크를 BM25용 색인으로도 만듭니다.
+bm25_retriever.k = 6  # BM25도 상위 6개까지 가져오게 맞춥니다.
+
+# Hybrid 데모는 Sparse도 강점을 보일 수 있는 질문으로 통일합니다.
+hybrid_demo_query = "금융투자회사 직원이 손실을 보전해 주겠다고 약속하면 왜 문제가 되는가?"
+
+print("Dense/BM25 공통 청크 수:", len(split_docs))
+print("Hybrid 비교 질문:", hybrid_demo_query)
+
+=== cell 21 (markdown) id=30c0950d ===
+#### Parallel Hybrid Retrieval (기본 조합)
+
+Dense 검색과 Sparse 검색을 병렬로 수행한 뒤 결과를 단순히 이어 붙여 봅니다.
+
+
+
+=== cell 22 (code) id=d4dd3442 ===
+# 실제로 테스트할 질문을 정합니다.
+query = hybrid_demo_query  # Dense와 Sparse를 같은 질문으로 비교합니다.
+
+dense_docs = dense_retriever.invoke(query)  # 의미 기반 검색 결과입니다.
+sparse_docs = bm25_retriever.invoke(query)  # 키워드 기반 검색 결과입니다.
+
+print(f"=== [Dense 검색 결과: {len(dense_docs)}개] ===")
+for i, doc in enumerate(dense_docs[:4], 1):
+    print(f"[{i}] id={doc.metadata.get('id')}")
+    print(doc.page_content[:140])  # 본문 앞부분만 봐도 검색 방향을 비교할 수 있습니다.
+    print("---")
+
+print(f"\n=== [Sparse(BM25) 검색 결과: {len(sparse_docs)}개] ===")
+for i, doc in enumerate(sparse_docs[:4], 1):
+    print(f"[{i}] id={doc.metadata.get('id')}")
+    print(doc.page_content[:140])  # 본문 앞부분만 봐도 검색 방향을 비교할 수 있습니다.
+    print("---")
+
+=== cell 23 (code) id=d28f0408 ===
+# Dense 결과와 Sparse 결과를 그대로 이어 붙인 예시입니다.
+# 이렇게 단순 합치면 중복이 생길 수 있고, 두 검색기의 순위도 그대로 섞여 들어갑니다.
+combined_docs = dense_docs + sparse_docs
+
+print(f"\n=== [Combined 결과: {len(combined_docs)}개] ===")
+for i, doc in enumerate(combined_docs[:8], 1):
+    print(f"[{i}] id={doc.metadata.get('id')}")
+    print(doc.page_content[:110])
+    print("---")
+
+=== cell 24 (markdown) id=9fef82c3 ===
+→ 단순 병합은 구현은 쉽지만, 결과에 **중복이 생길 수 있고** 두 검색기의 순위도 그대로 섞여 들어갑니다.  
+즉, 같은 문서를 한 번만 남기고, 여러 검색기에서 **꾸준히 상위에 나온 문서**를 더 앞으로 올리는 정리가 필요합니다.
+
+
+=== cell 25 (markdown) id=37e1450e ===
+#### Reciprocal Rank Fusion (RRF)
+
+RRF는 서로 다른 검색 결과의 **순위 정보만** 사용해 결과를 다시 합치는 방식입니다.
+
+```
+score = 1 / (k + rank + 1)
+```
+
+- `rank`: 각 검색 결과 안에서의 순위
+- `k`: 순위 영향을 완만하게 만드는 상수. 보통 60을 많이 사용
+
+핵심은 **한 검색기에서만 우연히 높게 나온 문서보다, 여러 검색기에서 꾸준히 상위에 등장한 문서**를 더 앞에 두는 것입니다.  
+즉, Dense와 Sparse 둘 다에서 순위가 높은 문서가 위로 올라오도록 정리하는 방식이라고 이해하면 됩니다.
+
+
+=== cell 26 (code) id=50fbad51 ===
+from langchain_core.retrievers import BaseRetriever  # 커스텀 검색기를 LangChain 표준 Retriever처럼 쓰기 위해 상속합니다.
+
+# 각 검색기의 순위만 사용해 문서별 누적 점수를 계산합니다.
+def reciprocal_rank_fusion_with_scores(result_lists, k=60):  # 여러 검색기의 순위를 하나의 점수표로 합칩니다.
+    """
+    Reciprocal Rank Fusion(RRF)을 직접 구현한 함수
+
+    result_lists : List[List[Document]]
+        Dense, Sparse 등 여러 retriever가 반환한 검색 결과 리스트들의 묶음
+        예: [dense_results, bm25_results]
+
+    k : int
+        순위 점수 차이를 너무 급격하게 만들지 않도록 완충하는 상수
+        보통 60을 많이 사용합니다.
+
+    반환값 : List[dict]
+        {"doc": Document, "score": 누적점수} 형태의 리스트를 점수순으로 정렬해 돌려줍니다.
+    """
+    scores = {}  # 문서별 누적 점수를 저장합니다.
+
+    for results in result_lists:  # Dense, Sparse처럼 각 검색기 결과를 차례로 봅니다.
+        for rank, doc in enumerate(results):
+            score = 1.0 / (k + rank + 1)  # 순위가 높을수록 더 큰 점수를 받습니다.
+            doc_id = doc.metadata.get("id", doc.page_content)  # 같은 문서인지 비교할 기준 ID입니다.
+
+            if doc_id not in scores:  # 처음 본 문서면 점수표에 등록합니다.
+                scores[doc_id] = {"doc": doc, "score": 0.0}
+            scores[doc_id]["score"] += score  # Dense 점수와 Sparse 점수를 문서별로 누적합니다.
+
+    return sorted(scores.values(), key=lambda item: item["score"], reverse=True)
+
+# 최종적으로는 점수순으로 정렬된 문서 리스트만 돌려줍니다.
+def reciprocal_rank_fusion(result_lists, k=60):  # 점수표에서 문서 리스트만 꺼냅니다.
+    """RRF 점수표에서 문서 객체만 꺼내 최종 순위 리스트로 반환합니다."""
+    ranked = reciprocal_rank_fusion_with_scores(result_lists, k=k)  # 문서와 점수를 함께 계산합니다.
+    return [item["doc"] for item in ranked]
+
+# 여러 retriever를 한 번에 호출해 RRF로 합친 결과를 만듭니다.
+def hybrid_rrf_retrieve(query, retrievers, k=60):
+    """동일한 질문을 여러 retriever에 넣고, 결과를 RRF로 결합합니다."""
+    results = [r.invoke(query) for r in retrievers]  # 같은 질문을 각 검색기에 넣습니다.
+    return reciprocal_rank_fusion(results, k=k)
+
+# LangChain 체인 안에서도 일반 retriever처럼 쓰기 위한 래퍼입니다.
+class HybridRRFRetriever(BaseRetriever):
+    retrievers: list  # 함께 결합할 검색기 목록입니다.
+    k: int = 60  # RRF 점수 계산에 쓰는 완충 상수입니다.
+
+    def _get_relevant_documents(self, query: str, *, run_manager=None):  # 일반 invoke에서 호출됩니다.
+        return hybrid_rrf_retrieve(query, self.retrievers, k=self.k)
+
+    async def _aget_relevant_documents(self, query: str, *, run_manager=None):  # 비동기 호출에서도 같은 로직을 씁니다.
+        return hybrid_rrf_retrieve(query, self.retrievers, k=self.k)
+
+# 출력에서 Dense 순위와 Sparse 순위를 함께 보기 위한 보조 맵입니다.
+def build_rank_map(docs):  # 문서 ID를 보면 원래 몇 위였는지 바로 찾게 해 줍니다.
+    return {doc.metadata.get("id", doc.page_content): rank + 1 for rank, doc in enumerate(docs)}
+
+# 개별 검색 결과 확인 (비교용)
+query = hybrid_demo_query
+
+dense_results = dense_retriever.invoke(query)  # Dense 검색기의 원래 순위입니다.
+bm25_results = bm25_retriever.invoke(query)  # Sparse 검색기의 원래 순위입니다.
+
+# Hybrid retriever는 이후 Generation과 Evaluation에서도 그대로 재사용합니다.
+hybrid_rrf = HybridRRFRetriever(
+    retrievers=[dense_retriever, bm25_retriever],
+    k=60
+)
+
+# 같은 질문에 대해 RRF 점수표를 먼저 만들고, 그 순서대로 최종 문서를 봅니다.
+rrf_ranked = reciprocal_rank_fusion_with_scores([dense_results, bm25_results], k=60)  # RRF 점수표를 만듭니다.
+hybrid_results = [item["doc"] for item in rrf_ranked]  # 최종 문서 순위만 따로 꺼냅니다.
+
+dense_rank_map = build_rank_map(dense_results)  # 문서별 Dense 순위를 빠르게 찾습니다.
+sparse_rank_map = build_rank_map(bm25_results)  # 문서별 Sparse 순위를 빠르게 찾습니다.
+
+print("=== RRF 상위 문서의 순위 비교 ===")
+print("(참고: '-'는 해당 검색기의 top-k 결과에는 없었다는 뜻입니다.)")
+for item in rrf_ranked[:5]:
+    doc = item["doc"]
+    doc_id = doc.metadata.get("id", doc.page_content)
+    rrf_score = item["score"]
+    print(
+        f"id={doc_id} | dense_rank={dense_rank_map.get(doc_id, '-')} | "
+        f"sparse_rank={sparse_rank_map.get(doc_id, '-')} | rrf_score={rrf_score:.4f}"
+    )
+
+print("\n=== RRF 상위 문서 본문 일부 ===")
+for doc in hybrid_results[:3]:
+    page = doc.metadata.get("page")
+    page_text = f", page={page + 1}" if isinstance(page, int) else ""
+    print("---")
+    print(f"[id={doc.metadata.get('id')}{page_text}]")
+    print(doc.page_content[:220])  # 본문 앞부분만 출력해 어떤 문서인지 확인합니다.
+
+
+=== cell 27 (markdown) id=a00b40de ===
+##### RRF의 장점
+- 점수 스케일을 맞추지 않아도 됨
+- Dense / Sparse 결과를 함께 쓸 때 안정적임
+- 구현이 단순하면서도 실무에서 자주 사용됨
+
+
+
+=== cell 28 (markdown) id=16fa21ee ===
+#### Hybrid Retrieval 결과 비교 실험
+
+아래에서는 `단순 병합`과 달리, RRF가 **Dense와 Sparse 양쪽에서 모두 순위가 높게 나온 문서**를 위로 올리는지 봅니다.  
+즉, 문서별로 `dense_rank`, `sparse_rank`, `rrf_score`를 함께 보면서 결과를 해석합니다.
+
+
+=== cell 29 (code) id=d45574a3 ===
+def preview_results(label, docs):  # 검색 결과 상위 2개를 짧게 보여 줍니다.
+    print(f"\n=== {label} (Top 2) ===")
+    for d in docs[:2]:
+        print("---")
+        print(d.page_content[:200])  # 본문 앞부분만 출력해 비교합니다.
+
+# 실제로 테스트할 질문을 정합니다.
+query = hybrid_demo_query  # 같은 질문으로 Dense, Sparse, Hybrid를 나란히 비교합니다.
+#query = "모바일폰을 사용한 금융거래 시 어떤 점을 유의해야 하는가?"
+#query = "부당권유란 무엇이며 어떤 경우 위법성이 문제되는가?"
+
+dense_res = dense_retriever.invoke(query)  # Dense 검색 결과입니다.
+sparse_res = bm25_retriever.invoke(query)  # BM25 검색 결과입니다.
+hybrid_res = hybrid_rrf.invoke(query)  # 두 결과를 합친 Hybrid 검색 결과입니다.
+
+preview_results("Dense Only", dense_res)
+preview_results("Sparse Only", sparse_res)
+preview_results("Hybrid (RRF, 양쪽에서 꾸준히 높은 문서 우선)", hybrid_res)
+
+=== cell 30 (markdown) id=2a4c2261 ===
+**관찰 포인트**
+
+- 어떤 방식이 가장 관련성 높은 청크를 포함하는가?  
+- Dense-only에서는 누락되지만 Sparse에서는 잡히는 내용이 있는가?  
+- Hybrid가 두 방식의 장점을 잘 결합했는가?
+
+=== cell 31 (markdown) id=a8f8cd68 ===
+#### 정리 — Retrieval 단계
+
+- Dense, Sparse, Hybrid는 모두 **Retrieval 단계에서 후보를 모으는 전략**입니다.
+- 이 단계의 핵심 목표는 **정답 가능성이 높은 문서를 빠뜨리지 않는 것**입니다.
+- RRF도 Post-Retrieval이 아니라, **검색 결과를 합치는 Retrieval 단계의 fusion 기법**입니다.
+
+
+
+=== cell 83 (markdown) id=32e2c049 ===
+### 4.5 실습: Langfuse CallbackHandler로 RAG 요청 추적하기
+
+Langfuse의 `CallbackHandler`는 **LangChain 실행 흐름을 trace로 남기는 연결 지점**입니다.
+이 핸들러를 `invoke()`의 `config`에 넣으면 아래 단계가 하나의 trace로 이어집니다.
+
+- Retriever 검색
+- Context 구성
+- Prompt 적용
+- LLM 호출
+- 최종 Output 생성
+
+#### 1) Langfuse CallbackHandler 생성
+
+
+=== cell 84 (code) id=c7d5f7ef ===
+#!uv add langfuse
+
+=== cell 85 (code) id=28079147 ===
+from dotenv import load_dotenv  # .env 안의 LANGFUSE_* 값을 현재 세션으로 불러옵니다.
+from langfuse import get_client  # Langfuse SDK 클라이언트를 가져옵니다.
+from langfuse.langchain import CallbackHandler  # LangChain 실행 기록을 Langfuse trace로 보냅니다.
+
+load_dotenv(override=True)  # Langfuse 설정을 현재 노트북 세션에 반영합니다.
+langfuse = get_client()  # 환경 변수로 Langfuse 클라이언트를 초기화합니다.
+langfuse_handler = CallbackHandler()  # 이후 invoke에서 사용할 추적 핸들러를 만듭니다.
+
+=== cell 86 (markdown) id=427500c0 ===
+#### 2) 기존 RAG 체인 실행에 CallbackHandler 전달
+
+앞에서 이미 만든 `hybrid_rrf`, `prompt`, `llm`, `format_context_with_sources`를 그대로 사용합니다.
+핵심은 `config={"callbacks": [langfuse_handler]}` 한 줄을 추가하는 것입니다.
+
+
+=== cell 87 (code) id=427500c0 ===
+from langchain_core.output_parsers import StrOutputParser  # 모델 응답 객체에서 텍스트만 꺼냅니다.
+from langchain_core.runnables import RunnableLambda, RunnablePassthrough  # 기존 함수와 retriever를 LCEL 체인으로 묶습니다.
+
+rag_chain = (
+    {
+        "query": RunnablePassthrough(),  # 사용자 질문은 그대로 프롬프트의 query로 전달합니다.
+        # hybrid_rrf는 BaseRetriever를 상속했으므로 LCEL 파이프에 바로 연결할 수 있습니다.
+        "context": hybrid_rrf | RunnableLambda(format_context_with_sources),  # 검색 결과를 하나의 문맥 문자열로 바꿉니다.
+    }
+    | prompt  # 질문과 문맥을 답변용 프롬프트로 구성합니다.
+    | llm  # 문맥 기반 답변을 생성합니다.
+    | StrOutputParser()  # 응답 객체에서 텍스트만 추출합니다.
+)
+
+question = "모바일폰을 사용한 금융거래 시 어떤 점을 유의해야 하는가?"
+
+answer = rag_chain.invoke(
+    question,
+    config={"callbacks": [langfuse_handler]},  # 이 설정이 trace를 Langfuse에 남깁니다.
+)
+
+print(answer)
+
+langfuse.flush()  # 노트북에서는 trace가 바로 전송되도록 대기 중 이벤트를 비웁니다.
+
+
+=== cell 88 (markdown) id=610fd2b2 ===
+실행 후 Langfuse 화면에서는 **입력 질문 -> 검색 결과 -> 전달된 context -> 최종 응답** 흐름이 순서대로 보입니다.  
+즉, 결과가 이상할 때 "검색이 문제인지, 생성이 문제인지"를 훨씬 빨리 좁혀갈 수 있습니다.
+
+<img src="image/langfuse_tracing.png" width="800">
+
+같은 방식으로 `ainvoke()`, `batch()`, `stream()`에도 callback config를 넘기면 실행 방식이 달라도 일관되게 trace를 남길 수 있습니다.
+
+
