@@ -8,6 +8,7 @@ dependencies = [
     "defusedxml>=0.7.1",
     "dotenv>=0.9.9",
     "faiss-cpu>=1.15.0",
+    "grandalf>=0.8",
     "langchain>=1.4.0",
     "langchain-classic>=1.0.8",
     "langchain-community>=0.4.2",
