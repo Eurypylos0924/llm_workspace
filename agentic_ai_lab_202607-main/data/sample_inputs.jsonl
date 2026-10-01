@@ -1,0 +1,9 @@
+{"id": "Q-001", "text": "LangGraph에서 State는 어떤 역할을 하나요?", "expected_type": "question"}
+{"id": "Q-002", "text": "리모트워크와 재택근무의 차이가 뭐예요?", "expected_type": "question"}
+{"id": "Q-003", "text": "Function Calling과 Tool Calling은 같은 개념인가요?", "expected_type": "question"}
+{"id": "D-001", "text": "다음 보고서를 요약하고 핵심 키워드를 뽑아줘: 리모트워크 만족도 조사 결과 74%가 만족한다고 응답했다.", "expected_type": "document"}
+{"id": "D-002", "text": "첨부한 회의록에서 결정사항만 정리해줘.", "expected_type": "document"}
+{"id": "C-001", "text": "25와 17을 더한 값을 알려줘.", "expected_type": "calculation"}
+{"id": "C-002", "text": "128을 4로 나누면 얼마야?", "expected_type": "calculation"}
+{"id": "U-001", "text": "오늘 저녁 메뉴 추천해줘.", "expected_type": "unknown"}
+{"id": "U-002", "text": "이 사진 속 강아지 품종이 뭐야?", "expected_type": "unknown"}

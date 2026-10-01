@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>제30강 — 확장 방향과 다음 학습</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic+Coding&amp;display=swap" rel="stylesheet"/>
+<link href="../assets/style.css" rel="stylesheet"/>
+</head><body>
+<div class="topbar">
+<a class="home" href="../index.html">📚 Agentic AI 강의</a>
+<span class="ch">제30강 · final system</span>
+<span class="meta">한국기술교육대학교 · AI 특화 인재양성 과정</span>
+</div>
+<div class="wrap">
+<div class="content">
+<div class="chip-nav"><b>제30강 · final system — 세부 목차</b><a class="" href="01_조각에서-제품으로.html">01. 조각에서 제품으로</a><a class="" href="02_통합-아키텍처-한눈에.html">02. 통합 아키텍처 한눈에</a><a class="" href="03_따라하기-도구-3개-실데이터.html">03. 따라하기 도구 3개 실데이터</a><a class="" href="04_따라하기-정책-RAG-도구로.html">04. 따라하기 정책 RAG 도구로</a><a class="" href="05_따라하기-통합-에이전트-도구-RAG-메모리.html">05. 따라하기 통합 에이전트 도구 RAG 메모리</a><a class="" href="06_따라하기-멀티턴-시나리오-데모.html">06. 따라하기 멀티턴 시나리오 데모</a><a class="" href="07_에러-케이스-다뤄보기.html">07. 에러 케이스 다뤄보기</a><a class="" href="08_발표와-시연-가이드.html">08. 발표와 시연 가이드</a><a class="cur" href="09_확장-방향과-다음-학습.html">09. 확장 방향과 다음 학습</a><a class="" href="10_실습문제와-해답.html">10. 실습문제와 해답</a></div>
+<div class="md">
+<h1 id="_1">확장 방향과 다음 학습</h1>
+<h2 id="_2">한 줄 요약</h2>
+<p>30강을 완주하며 여러분은 <strong>LLM 호출 → 도구 → 루프 → RAG → 메모리 → 멀티에이전트 → 설계·배포 → 통합</strong>까지 에이전트 개발의 전 과정을 직접 구현했습니다. 이 골격을 <strong>여러분의 실제 서비스</strong>로 키우는 확장 방향과, 더 깊이 갈 다음 학습 주제를 정리합니다.</p>
+<hr/>
+<h2 id="1">1. 여기까지 온 길</h2>
+<p>30강의 여정을 돌아봅시다.</p>
+<pre><code class="language-text">1~4강:   두뇌 깨우기   — LLM 호출·프롬프트·추론
+5~12강:  손발 달기     — 도구·함수 호출·루프·계획·검색·코드실행
+13~20강: 지식과 기억   — RAG(문서 검색)·임베딩·벡터DB·메모리
+21~27강: 협업          — 워크플로우·멀티에이전트·역할 분담
+28~30강: 제품화        — 설계·운영·통합
+</code></pre>
+<p>빈 두뇌(LLM)에서 시작해 <strong>진짜로 일하는 통합 CS 에이전트</strong>까지 만들었습니다. 1강에서 "답 못 했던" 질문이 30강에서 술술 처리되죠. 그 전 과정을 <strong>여러분의 손으로</strong> 구현했습니다.</p>
+<hr/>
+<h2 id="2">2. 확장 방향 (수료 후)</h2>
+<p>완성한 골격을 실제 제품으로 키우는 길입니다.</p>
+<h3 id="_3">배포</h3>
+<pre><code class="language-text">- 29강 FastAPI를 Docker로 패키징 → 클라우드(AWS/GCP) 배포
+- 메모리를 InMemorySaver → Redis/DB로 영속화 (서버 재시작에도 대화 유지)
+- 환경별 config(dev/prod) 분리 운영
+</code></pre>
+<h3 id="_4">평가</h3>
+<pre><code class="language-text">- 테스트 질문 세트로 정확도·환각률·응답시간 측정
+- LangSmith 등으로 추적·관측(observability)
+- 회귀 테스트: 프롬프트 바꿨을 때 품질이 떨어지지 않는지
+</code></pre>
+<h3 id="_5">멀티에이전트 (도구가 늘면)</h3>
+<pre><code class="language-text">- 28강 판단대로, 도구가 5~7개를 넘으면 25~27강 패턴으로 분리
+- 예: '결제팀 에이전트', '배송팀 에이전트' (Supervisor 라우팅)
+- StateGraph로 복잡한 협업 흐름 선언(27강)
+</code></pre>
+<h3 id="_6">개인화 (장기 메모리)</h3>
+<pre><code class="language-text">- user_profiles.json 을 연결해 사용자별 정보 기억(20강)
+- "지난번에 산 이어버드 어때요?" 같은 개인화 응대
+</code></pre>
+<h3 id="_7">안전장치</h3>
+<pre><code class="language-text">- 환불 실행 같은 비가역 행동에 human-in-the-loop 승인(07번)
+- 입력 검증·가드레일(프롬프트 인젝션 방어, 3강)
+- 비용 상한·rate limit (29강)
+</code></pre>
+<hr/>
+<h2 id="3">3. 더 깊이 갈 다음 학습 주제</h2>
+<p>이 과정을 마쳤다면, 다음 네 방향으로 심화할 수 있습니다.</p>
+<pre><code class="language-text">① 운영 배포·관측성
+   - LangSmith / OpenTelemetry 로 프로덕션 추적
+   - 로그·메트릭·트레이스로 에이전트 동작 분석
+
+② 평가 자동화
+   - 골든 데이터셋, LLM-as-judge, A/B 테스트
+   - "프롬프트를 바꿨더니 정말 좋아졌나"를 수치로
+
+③ 멀티에이전트 고도화
+   - LangGraph 심화(서브그래프, 휴먼 인 더 루프, 스트리밍)
+   - 복잡한 협업·조건부 분기·병렬 실행
+
+④ 안전성·가드레일
+   - 프롬프트 인젝션 방어, 출력 검증, PII 마스킹
+   - 책임 있는 AI(거부·면책·출처 표기)
+</code></pre>
+<hr/>
+<h2 id="4">4. 실전 적용 — 여러분의 데이터로</h2>
+<p>가장 중요한 다음 단계는 <strong>여러분의 실제 데이터</strong>로 같은 골격을 적용하는 것입니다.</p>
+<pre><code class="language-text">승승장구몰 → 여러분의 회사/서비스
+- orders.csv     → 여러분의 주문/거래 DB
+- 정책 PDF        → 여러분의 사내 문서/매뉴얼
+- faq.csv        → 여러분의 FAQ/지식베이스
+</code></pre>
+<p>이 과정의 코드는 <strong>데이터만 바꾸면</strong> 여러분의 도메인에 그대로 적용됩니다. 도구의 CSV 경로를 바꾸고, RAG에 여러분의 문서를 넣고, 시스템 프롬프트를 여러분의 톤으로 다듬으면 됩니다. <strong>골격은 그대로, 데이터만 여러분 것으로.</strong></p>
+<hr/>
+<h2 id="5">5. 마지막 조언</h2>
+<pre><code class="language-text">- 작게 시작하라: 도구 1~2개로 동작하는 걸 먼저 만들고 늘려라
+- 측정하라: "좋아진 것 같다"가 아니라 수치로 확인하라
+- 필요한 것만: 멀티에이전트·장기메모리는 정말 필요할 때(28강 원칙)
+- 운영을 잊지 마라: 모델이 좋아도 설정·로깅·재시도 없으면 제품이 아니다(29강)
+</code></pre>
+<p>가장 중요한 건 <strong>계속 만들어 보는 것</strong>입니다. 이 과정에서 만든 골격은 출발점이고, 진짜 실력은 여러분의 문제에 적용하며 쌓입니다.</p>
+<hr/>
+<h2 id="_8">핵심 정리</h2>
+<ul>
+<li>30강 완주 = <strong>LLM 호출부터 통합 에이전트까지</strong> 전 과정을 직접 구현.</li>
+<li>확장 방향: <strong>배포(Docker·클라우드)·평가·멀티에이전트·개인화·안전장치</strong>.</li>
+<li>심화 주제: <strong>관측성·평가 자동화·LangGraph 고도화·가드레일</strong>.</li>
+<li>실전 적용: <strong>골격은 그대로, 데이터만 여러분 것으로</strong> 바꾸면 즉시 적용 가능.</li>
+<li>조언: <strong>작게 시작·측정·필요한 것만·운영을 잊지 말 것</strong>.</li>
+<li>다음 절에서 마지막 실습문제로 과정을 마무리합니다.</li>
+</ul>
+</div>
+</div>
+<div class="pager"><a class="prv" href="08_발표와-시연-가이드.html"><span class="lbl">← 이전 절</span>08. 발표와 시연 가이드</a><a class="nxt" href="10_실습문제와-해답.html"><span class="lbl">다음 절 →</span>10. 실습문제와 해답</a></div>
+</div>
+</body></html>

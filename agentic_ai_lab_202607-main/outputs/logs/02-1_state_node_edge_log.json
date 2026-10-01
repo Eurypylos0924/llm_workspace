@@ -1,0 +1,29 @@
+{
+  "initial_state": {
+    "user_input": "128 나누기 4는 얼마야?",
+    "input_type": "",
+    "analysis": {},
+    "final_answer": "",
+    "error": null
+  },
+  "result_state": {
+    "user_input": "128 나누기 4는 얼마야?",
+    "input_type": "calculation",
+    "analysis": {
+      "length": 15,
+      "has_number": true
+    },
+    "final_answer": "[calculation] 128 나누기 4는 얼마야?",
+    "error": null
+  },
+  "broken_result_state": {
+    "user_input": "128 나누기 4는 얼마야?",
+    "input_type": "",
+    "analysis": {},
+    "final_answer": "[] 128 나누기 4는 얼마야?",
+    "error": null
+  },
+  "invalid_keys_detected": [
+    "inputType"
+  ]
+}

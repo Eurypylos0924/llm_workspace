@@ -1,0 +1,60 @@
+{
+  "calc_example": {
+    "user_request": "25와 17을 더한 값을 계산해줘.",
+    "tool_calls": [
+      {
+        "name": "calculate_tool",
+        "args": {
+          "expression": "25 + 17"
+        },
+        "id": "call_S9jv4pnsuUw9Z6bBJZMvEeGQ",
+        "type": "tool_call"
+      }
+    ],
+    "tool_results": [
+      {
+        "name": "calculate_tool",
+        "args": {
+          "expression": "25 + 17"
+        },
+        "status": "ok",
+        "output": 42
+      }
+    ],
+    "final_answer": "25와 17을 더한 값은 42입니다."
+  },
+  "requests_observed": [
+    "128을 4로 나눠줘.",
+    "다음 텍스트에서 '만족도'라는 단어를 찾아줘: 리모트워크 만족도는 74%였다."
+  ],
+  "broken_calls_tested": [
+    "unknown_tool",
+    "calculate_tool",
+    "calculate_tool",
+    "calculate_tool",
+    "load_document_tool"
+  ],
+  "division_error_log": {
+    "user_request": "10을 0으로 나눠줘.",
+    "tool_calls": [
+      {
+        "name": "calculate_tool",
+        "args": {
+          "expression": "10 / 0"
+        },
+        "id": "forced-1"
+      }
+    ],
+    "tool_results": [
+      {
+        "name": "calculate_tool",
+        "args": {
+          "expression": "10 / 0"
+        },
+        "status": "error",
+        "error": "0으로 나눌 수 없습니다."
+      }
+    ],
+    "final_answer": "Tool 실행 실패: 0으로 나눌 수 없습니다."
+  }
+}

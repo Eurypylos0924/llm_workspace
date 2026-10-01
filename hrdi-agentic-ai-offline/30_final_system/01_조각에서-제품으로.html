@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>제30강 — 조각에서 제품으로</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic+Coding&amp;display=swap" rel="stylesheet"/>
+<link href="../assets/style.css" rel="stylesheet"/>
+</head><body>
+<div class="topbar">
+<a class="home" href="../index.html">📚 Agentic AI 강의</a>
+<span class="ch">제30강 · final system</span>
+<span class="meta">한국기술교육대학교 · AI 특화 인재양성 과정</span>
+</div>
+<div class="wrap">
+<div class="content">
+<div class="chip-nav"><b>제30강 · final system — 세부 목차</b><a class="cur" href="01_조각에서-제품으로.html">01. 조각에서 제품으로</a><a class="" href="02_통합-아키텍처-한눈에.html">02. 통합 아키텍처 한눈에</a><a class="" href="03_따라하기-도구-3개-실데이터.html">03. 따라하기 도구 3개 실데이터</a><a class="" href="04_따라하기-정책-RAG-도구로.html">04. 따라하기 정책 RAG 도구로</a><a class="" href="05_따라하기-통합-에이전트-도구-RAG-메모리.html">05. 따라하기 통합 에이전트 도구 RAG 메모리</a><a class="" href="06_따라하기-멀티턴-시나리오-데모.html">06. 따라하기 멀티턴 시나리오 데모</a><a class="" href="07_에러-케이스-다뤄보기.html">07. 에러 케이스 다뤄보기</a><a class="" href="08_발표와-시연-가이드.html">08. 발표와 시연 가이드</a><a class="" href="09_확장-방향과-다음-학습.html">09. 확장 방향과 다음 학습</a><a class="" href="10_실습문제와-해답.html">10. 실습문제와 해답</a></div>
+<div class="md">
+<h1 id="_1">조각에서 제품으로</h1>
+<h2 id="_2">한 줄 요약</h2>
+<p>드디어 마지막 강입니다. 지금까지 <strong>부품을 하나씩</strong> 만들었습니다 — 도구·RAG·메모리·설계·운영. 이번 강은 이 부품들을 <strong>28강 설계대로 조립</strong>해 <strong>하나의 동작하는 제품</strong>, "승승장구몰 통합 CS 에이전트"를 완성합니다. 1강에서 LLM이 "답 못 했던" 질문을, 이제 우리 에이전트가 <strong>실제 데이터를 조회해</strong> 답합니다.</p>
+<hr/>
+<h2 id="1">1. 여기까지 우리가 만든 부품들</h2>
+<p>29강에 걸쳐 에이전트의 부품을 하나씩 익혔습니다.</p>
+<pre><code class="language-text">도구(5~12강)       — 주문/재고/FAQ 조회, 함수 호출, 루프
+RAG(13~18강)       — 사내 정책 문서를 근거로 답변
+메모리(19~20강)     — 대화 맥락·사용자 기억
+멀티에이전트(25~27강) — 역할 분담·협업
+설계·배포(28~29강)  — 설정·로깅·예외처리·운영
+</code></pre>
+<p>각 부품은 <strong>따로</strong> 동작했습니다. 도구는 도구대로, RAG는 RAG대로, 메모리는 메모리대로. 이제 이걸 <strong>하나로 합쳐</strong> 진짜 상담원처럼 일하는 시스템을 만듭니다.</p>
+<hr/>
+<h2 id="2-1">2. 1강의 약속을 지키는 시간</h2>
+<p>1강을 기억하시나요? LLM에게 이렇게 물었습니다.</p>
+<pre><code class="language-text">"승승장구몰 주문번호 O000123은 지금 배송 어디까지 왔나요?"
+→ LLM: "죄송하지만 실시간 주문 정보는 확인할 수 없습니다" (답 못 함)
+</code></pre>
+<p>그때 우리는 "이걸 답하게 만드는 게 이 과정의 목표"라고 했습니다. <strong>이번 30강에서 그 약속을 지킵니다.</strong> 완성된 에이전트는:</p>
+<pre><code class="language-text">고객: "내 주문 O000050은?"
+상담원: "주문 O000050: 자기계발 다이어리 2개, 36,000원, 상태=배송완료입니다."
+        (get_order_status 도구가 orders.csv를 실제로 조회!)
+</code></pre>
+<p>말만 하던 LLM이, <strong>실제로 일을 끝내는</strong> 에이전트가 되는 순간입니다.</p>
+<hr/>
+<h2 id="3-28">3. 단일 에이전트로 충분하다 (28강 판단)</h2>
+<p>28강에서 우리는 <strong>구성요소 필요성</strong>을 판단했습니다. 그 결론을 그대로 따릅니다.</p>
+<pre><code class="language-text">✅ 도구 4개  : get_order_status, get_stock, search_faq, policy_search
+✅ RAG       : 정책/멤버십 PDF (policy_search 안에서)
+✅ 단기메모리 : thread_id 별 대화 세션
+❌ 멀티에이전트: 도구 4개라 단일 create_agent 로 충분
+</code></pre>
+<blockquote>
+<p><strong>왜 단일 에이전트?</strong> 28강에서 판단했듯, 도구가 4개뿐이라 <strong>단일 <code>create_agent</code></strong> 하나가 충분히 다룹니다. 멀티에이전트는 도구가 더 늘면 그때 도입하는 <strong>확장 포인트</strong>입니다. "필요 없는 건 안 넣는다"(28강 원칙)를 마지막까지 지킵니다.</p>
+</blockquote>
+<hr/>
+<h2 id="4-rag">4. 핵심 통합 기법 — "RAG를 도구로 만든다"</h2>
+<p>여러 부품을 하나로 합치는 비결은 <strong>"모든 능력을 도구로 통일"</strong> 하는 것입니다(18강에서 미리 봤죠).</p>
+<pre><code class="language-text">주문 조회  → @tool get_order_status
+재고 조회  → @tool get_stock
+FAQ       → @tool search_faq
+정책 검색  → create_retriever_tool 로 RAG를 '도구'로 감쌈  ← 핵심!
+</code></pre>
+<p>RAG(정책 검색)도 <strong>하나의 도구</strong>로 만들어, 다른 도구들과 <strong>나란히</strong> 에이전트에 넣습니다. 그러면 에이전트가 질문을 보고 <strong>스스로</strong> 고릅니다 — "이건 정책 검색, 저건 주문 조회". 능력을 도구로 통일하니 통합이 깔끔해지죠.</p>
+<hr/>
+<h2 id="5">5. 이번 강의 흐름</h2>
+<pre><code class="language-text">02번: 통합 아키텍처 한눈에   (전체 그림)
+03번: 따라하기 — 도구 3개    (주문·재고·FAQ)
+04번: 따라하기 — 정책 RAG 도구화
+05번: 따라하기 — 통합 에이전트 (도구+RAG+메모리)
+06번: 따라하기 — 멀티턴 시나리오 (세 요소가 한 세션에서 협력)
+07번: 신규 — 에러 케이스 (없는 주문·오타 → 환각 없이 정직하게)
+08번: 발표·시연 가이드
+09번: 확장 방향·다음 학습
+</code></pre>
+<p>03~05번에서 부품을 조립하고, 06번에서 <strong>RAG·도구·메모리가 한 대화에서 함께 작동</strong>하는 졸업 시연을 봅니다. 07번에서 견고함(에러 처리)을 점검하고, 08~09번으로 과정을 마무리합니다.</p>
+<hr/>
+<h2 id="_3">핵심 정리</h2>
+<ul>
+<li>29강에 걸쳐 만든 부품(도구·RAG·메모리·설계·운영)을 <strong>하나의 제품으로 조립</strong>한다.</li>
+<li><strong>1강의 약속</strong>("내 주문 어디까지 왔어?")을 30강에서 실제로 답하게 만든다.</li>
+<li>28강 판단대로 <strong>단일 <code>create_agent</code></strong> 로 충분(도구 4개) — 멀티에이전트는 확장 포인트.</li>
+<li>핵심 통합 기법: <strong>"RAG를 도구로 만들어"</strong> 다른 도구와 나란히 → 에이전트가 스스로 선택.</li>
+<li>다음 절에서 통합 아키텍처 전체 그림을 봅니다.</li>
+</ul>
+</div>
+</div>
+<div class="pager"><span class="prv off"><span class="lbl"> </span> </span><a class="nxt" href="02_통합-아키텍처-한눈에.html"><span class="lbl">다음 절 →</span>02. 통합 아키텍처 한눈에</a></div>
+</div>
+</body></html>

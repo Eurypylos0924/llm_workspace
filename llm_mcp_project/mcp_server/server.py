@@ -8,15 +8,15 @@ import datetime
 from dotenv import load_dotenv
 from mcp.server.mcpserver import MCPServer
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_openai import ChatOpenAI
 
 
 # 외부 샌드박스 엔진 임포트
 from external_adapter.python_sandbox import SafePythonSandbox
 from external_adapter.weather import WeatherAdapter
 from external_adapter.tavily_search import TavilySearchEngine
-from external_adapter.vector_db import VectorDBAdapter
-
 from external_adapter.google_calendar import GoogleCalendarAdapter
+from external_adapter.vector_db import VectorDBAdapter
 
 # .env 환경변수 로드
 load_dotenv(override=True, dotenv_path='.env')
@@ -29,40 +29,12 @@ mcp = MCPServer("calculator-search-and-resources, google-calendar-service")
 sandbox = SafePythonSandbox()
 weather_adapter = WeatherAdapter()
 search_engine = TavilySearchEngine()
-vector_db_adapter = VectorDBAdapter()
 calendar_adapter = GoogleCalendarAdapter()
-
-
-# ------------------------------------------------------------------
-# PDF VectorDB (FAISS) 자동 적재 초기화 (서버 구동 시 검사)
-# ------------------------------------------------------------------
-PDF_FILE_PATH = "data/금융투자협회_투자길라잡이_2018.pdf"
-if os.path.exists(PDF_FILE_PATH):
-    sys.stderr.write(f"📄 '{PDF_FILE_PATH}' 문서를 FAISS VectorDB에 적재 중...\n")
-    init_msg = vector_db_adapter.load_pdf_to_vector_db(PDF_FILE_PATH)
-    # stdio 방식에서 stdout은 MCP 통신 채널이므로 로그는 stderr로 출력
-    sys.stderr.write(f"{init_msg}\n")
-
+vector_db_adapter = VectorDBAdapter()
 
 # ==========================================
 # 🛠️ MCP Tools (도구)
 # ==========================================
-
-# @mcp.tool()
-# def multiply(a: float, b: float) -> float:
-#     """Multiplies two numbers together using SafePythonSandbox.
-
-#     Args:
-#         a (float): 첫 번째 숫자
-#         b (float): 두 번째 숫자
-
-#     Returns:
-#         float: 두 수의 곱셈 결과
-#     """
-#     return a * b
-#     expr = f"{a} * {b}"
-#     return float(sandbox.calculate(expr))
-
 
 @mcp.tool()
 def safe_calculate(expression: str) -> str:
@@ -117,7 +89,6 @@ def get_weather_forecast(latitude: float = 37.5665, longitude: float = 126.9780)
     except Exception as e:
         return f"날씨 정보 조회 중 오류가 발생했습니다: {str(e)}"
 
-
 @mcp.tool()
 def web_search(query: str) -> str:
     """Tavily API 전용 엔진을 사용하여 실시간 웹 검색을 수행하고 결과를 반환합니다.
@@ -130,18 +101,6 @@ def web_search(query: str) -> str:
     """
     return search_engine.search(query=query, max_results=3)
 
-
-@mcp.tool()
-def search_financial_guide(query: str) -> str:
-    """금융투자협회 투자길라잡이(2018) 문서 VectorDB에서 관련 지식 및 투자 정보를 검색합니다.
-
-    Args:
-        query (str): 금융, 주식, 펀드, 투자 관련 질문 또는 검색 키워드
-
-    Returns:
-        str: 검색된 문서 조각 및 관련 정보
-    """
-    return vector_db_adapter.search_similar_documents(query=query, k=3)
 
 @mcp.tool()
 def list_google_calendar_events(max_results: int = 10) -> str:
@@ -163,41 +122,19 @@ def list_google_calendar_events(max_results: int = 10) -> str:
     except Exception as e:
         return f"Google Calendar 일정 조회 중 오류 발생: {str(e)}"
 
-
 @mcp.tool()
-def create_google_calendar_event(
-    title: str,
-    start_time: str,
-    end_time: str,
-    description: str = "",
-    location: str = "",
-) -> str:
-    """Google Calendar에 새로운 일정을 등록합니다.
+def search_financial_guide(query: str) -> str:
+    """금융투자협회 투자길라잡이(2018) 문서 VectorDB에서 관련 지식 및 투자 정보를 검색합니다.
 
     Args:
-        title (str): 일정 제목 (예: '프로젝트 주간 회의')
-        start_time (str): 시작 시간 (ISO 8601 형식, 예: '2026-09-29T10:00:00')
-        end_time (str): 종료 시간 (ISO 8601 형식, 예: '2026-09-29T11:00:00')
-        description (str): 일정에 대한 상세 설명/메모
-        location (str): 회의 장소 또는 링크
+        query (str): 금융, 주식, 펀드, 투자 관련 질문 또는 검색 키워드
+
+    Returns:
+        str: 검색된 문서 조각 및 관련 정보
     """
-    try:
-        result = calendar_adapter.create_event(
-            summary=title,
-            start_time=start_time,
-            end_time=end_time,
-            description=description,
-            location=location,
-        )
-        return (
-            f"성공적으로 Google Calendar에 일정이 등록되었습니다!\n"
-            f"- 제목: {result['title']}\n"
-            f"- 시간: {result['start']} ~ {result['end']}\n"
-            f"- 링크: {result['htmlLink']}"
-        )
-    except Exception as e:
-        return f"Google Calendar 일정 등록 중 오류 발생: {str(e)}"
-    
+    return vector_db_adapter.search_similar_documents(query=query, k=3)
+
+
 # ==========================================
 #  MCP Resources (자원)
 # ==========================================
@@ -223,6 +160,8 @@ def get_app_guide() -> str:
 4. 금융 정보 조회: 'search_financial_guide' 툴을 활용하여 FAISS VectorDB에서 검색합니다.
 5. 일정 관리: 'create_google_calendar_event', 'list_google_calendar_events' 툴로 구글 캘린더를 연동합니다.
 """
+
+
 
 
 if __name__ == "__main__":

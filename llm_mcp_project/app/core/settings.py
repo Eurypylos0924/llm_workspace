@@ -15,7 +15,6 @@ class Settings(BaseSettings):
     nvidiaapi_key: str = ""
     nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
     llm_model: str = "z-ai/glm-5.3-flash"
-    embedding_model: str = "nvidia/nemotron-3-embed-1b"
     tavily_api_key: str = ""
 
     # Pydantic v2 / pydantic-settings 표준 설정

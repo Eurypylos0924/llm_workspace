@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>제30강 — 따라하기 — 멀티턴 시나리오 데모</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic+Coding&amp;display=swap" rel="stylesheet"/>
+<link href="../assets/style.css" rel="stylesheet"/>
+</head><body>
+<div class="topbar">
+<a class="home" href="../index.html">📚 Agentic AI 강의</a>
+<span class="ch">제30강 · final system</span>
+<span class="meta">한국기술교육대학교 · AI 특화 인재양성 과정</span>
+</div>
+<div class="wrap">
+<div class="content">
+<div class="chip-nav"><b>제30강 · final system — 세부 목차</b><a class="" href="01_조각에서-제품으로.html">01. 조각에서 제품으로</a><a class="" href="02_통합-아키텍처-한눈에.html">02. 통합 아키텍처 한눈에</a><a class="" href="03_따라하기-도구-3개-실데이터.html">03. 따라하기 도구 3개 실데이터</a><a class="" href="04_따라하기-정책-RAG-도구로.html">04. 따라하기 정책 RAG 도구로</a><a class="" href="05_따라하기-통합-에이전트-도구-RAG-메모리.html">05. 따라하기 통합 에이전트 도구 RAG 메모리</a><a class="cur" href="06_따라하기-멀티턴-시나리오-데모.html">06. 따라하기 멀티턴 시나리오 데모</a><a class="" href="07_에러-케이스-다뤄보기.html">07. 에러 케이스 다뤄보기</a><a class="" href="08_발표와-시연-가이드.html">08. 발표와 시연 가이드</a><a class="" href="09_확장-방향과-다음-학습.html">09. 확장 방향과 다음 학습</a><a class="" href="10_실습문제와-해답.html">10. 실습문제와 해답</a></div>
+<div class="md">
+<h1 id="_1">따라하기 — 멀티턴 시나리오 데모</h1>
+<h2 id="_2">목표</h2>
+<p>완성된 통합 에이전트를 <strong>멀티턴 대화</strong>로 시연합니다. 한 세션 안에서 <strong>RAG·도구·메모리 세 능력이 함께</strong> 작동하는 걸 직접 확인합니다. 이게 30강 졸업작품의 하이라이트입니다.</p>
+<hr/>
+<h2 id="1">1. 데모 시나리오 — 세 능력을 한 번에</h2>
+<p>한 고객이 세 가지 질문을 <strong>순서대로</strong> 던집니다. 각 질문이 다른 능력을 씁니다.</p>
+<pre><code class="language-python">def main():
+    tid = "user-1001"   # 한 사람의 대화 세션(같은 id로 호출해야 맥락이 이어짐)
+    turns = [
+        "환불 절차 알려줘",          # 1) RAG: 정책 문서 근거로 답
+        "내 주문 O000050은?",        # 2) 도구: 주문 조회
+        "아까 그 정책 다시 알려줘",     # 3) 메모리: '아까 그 정책'=환불을 기억해 이어 답
+    ]
+    for i, q in enumerate(turns, 1):
+        print("=" * 60)
+        print(f"[턴 {i}] 고객:", q)
+        print("상담원:", answer(q, thread_id=tid))   # 같은 tid → 같은 대화 세션
+
+
+if __name__ == "__main__":
+    main()
+</code></pre>
+<p><strong>핵심</strong>: 세 질문 모두 <strong>같은 <code>thread_id="user-1001"</code></strong> 로 호출합니다. 그래야 한 대화로 묶여 맥락이 이어지죠.</p>
+<hr/>
+<h2 id="2">2. 실행 결과</h2>
+<pre><code class="language-text">============================================================
+[턴 1] 고객: 환불 절차 알려줘
+상담원: 환불은 상품 수령 후 7일 이내 신청 가능하며, 마이페이지 &gt; 주문내역에서 ...
+        (policy_search 도구가 환불교환정책.pdf 를 검색해 근거로 답함)
+============================================================
+[턴 2] 고객: 내 주문 O000050은?
+상담원: 주문 O000050: 자기계발 다이어리 2개, 36,000원, 주문일 2025-10-29, 상태=배송완료 입니다.
+        (get_order_status 도구가 orders.csv 조회)
+============================================================
+[턴 3] 고객: 아까 그 정책 다시 알려줘
+상담원: 앞서 안내드린 환불 절차를 다시 정리하면, 수령 후 7일 이내 ...
+        (InMemorySaver 가 1턴의 맥락을 기억 → '아까 그 정책'을 환불로 해석)
+</code></pre>
+<p>세 턴이 각각 다른 능력을 썼습니다. 하나하나 뜯어봅시다.</p>
+<hr/>
+<h2 id="3-1-rag">3. 턴 1 — RAG (정책 문서 근거)</h2>
+<pre><code class="language-text">고객: "환불 절차 알려줘"
+   → 에이전트가 'policy_search' 도구 선택
+   → 환불교환정책.pdf 에서 관련 청크 검색
+   → 그 근거로 답변 생성
+</code></pre>
+<p><strong>환각 없이</strong> 실제 정책 문서를 근거로 답합니다. LLM이 지어낸 게 아니라, FAISS가 찾은 문서 내용이죠(13~18강 RAG). 시스템 프롬프트의 "정책은 문서 근거로만"이 작동한 결과입니다.</p>
+<hr/>
+<h2 id="4-2">4. 턴 2 — 도구 (실시간 주문 조회)</h2>
+<pre><code class="language-text">고객: "내 주문 O000050은?"
+   → 에이전트가 'get_order_status' 도구 선택
+   → orders.csv 에서 O000050 행 조회
+   → 실제 주문 정보로 답변
+</code></pre>
+<p><strong>1강에서 LLM이 못 답했던</strong> 바로 그 질문입니다! 이제 에이전트가 <code>orders.csv</code>를 실제로 조회해 "다이어리 2개, 36,000원, 배송완료"라고 정확히 답합니다. 도구가 손발이 된 거죠(5강 함수 호출).</p>
+<hr/>
+<h2 id="5-3">5. 턴 3 — 메모리 (맥락 기억)</h2>
+<pre><code class="language-text">고객: "아까 그 정책 다시 알려줘"
+   → "아까 그 정책"이 뭐지? → InMemorySaver가 1턴 대화를 기억
+   → "아, 환불 절차구나" → 이어서 답변
+</code></pre>
+<p><strong>가장 인상적인 부분</strong>입니다. "아까 그 정책"이라는 <strong>모호한 지시</strong>를, 에이전트가 1턴의 "환불 절차"를 기억해 해석합니다. 사람 상담원처럼 맥락을 이어가죠(19강 메모리).</p>
+<hr/>
+<h2 id="6">6. 세 능력의 협력 — 핵심 관찰</h2>
+<p><strong>하나의 에이전트, 하나의 세션</strong>(<code>thread_id="user-1001"</code>) 안에서 세 능력이 함께 작동합니다.</p>
+<ul>
+<li><strong>턴 1: RAG</strong> — 정책 문서 검색 (환각 방지)</li>
+<li><strong>턴 2: 도구</strong> — 주문 DB 실시간 조회</li>
+<li><strong>턴 3: 메모리</strong> — 이전 맥락("아까 그 정책") 해석</li>
+</ul>
+<p>따로 배운 RAG·도구·메모리가 <strong>한 대화 안에서 협력</strong>합니다. 이게 우리가 30강에 걸쳐 쌓아온 결과입니다 — <strong>"말만 하던 LLM"이 "실제로 일하는 에이전트"</strong> 가 됐죠.</p>
+<blockquote>
+<p><strong>직접 실험</strong>: 턴 3을 <strong>다른 <code>thread_id</code></strong> 로 호출해 보세요. 예: <code>answer("아까 그 정책 다시", thread_id="other")</code>. 그러면 에이전트가 "어떤 정책을 말씀하시나요?"라고 되묻습니다 — 다른 세션이라 1·2턴을 기억 못 하니까요. 이게 <strong>메모리 격리</strong>의 증거입니다(thread_id별 분리, 19강).</p>
+</blockquote>
+<hr/>
+<h2 id="7-29-fastapi">7. (선택) 29강 FastAPI에 연결</h2>
+<p>이 완성된 에이전트를 HTTP 서비스로 만드는 건 <strong>한 줄</strong>입니다.</p>
+<pre><code class="language-python"># 29강 /chat 엔드포인트에서 robust_invoke 대신 answer 를 호출
+@app.post("/chat")
+def chat(body: ChatIn):
+    reply = answer(body.message, body.thread_id)   # 완성된 에이전트!
+    return {"thread_id": body.thread_id, "reply": reply}
+</code></pre>
+<p>29강에서 <code>robust_invoke</code>(단순 LLM 호출)가 있던 자리에 <strong><code>answer</code>(완성 에이전트)</strong> 를 끼우면 됩니다. 엔드포인트 구조는 그대로죠. 이게 28강에서 설계한 <strong>"비즈니스 로직과 전송 계층 분리"의 결실</strong>입니다 — 본체를 교체해도 웹 계층은 안 바뀝니다.</p>
+<hr/>
+<h2 id="_3">핵심 정리</h2>
+<ul>
+<li>멀티턴 시나리오로 <strong>RAG·도구·메모리가 한 세션에서 협력</strong>함을 시연.</li>
+<li>턴 1 <strong>RAG</strong>(정책 근거), 턴 2 <strong>도구</strong>(주문 조회 = 1강의 그 질문!), 턴 3 <strong>메모리</strong>("아까 그 정책").</li>
+<li><strong>같은 <code>thread_id</code></strong> 라서 맥락이 이어짐 — 다른 id면 "어떤 정책요?"(메모리 격리).</li>
+<li>29강 <code>/chat</code>에 <code>answer()</code>를 끼우면 <strong>그대로 HTTP 서비스</strong>(전송 계층 분리의 결실).</li>
+<li>말만 하던 LLM이 <strong>실제로 일하는 에이전트</strong>가 된 졸업 시연.</li>
+<li>다음 절에서 <strong>에러 케이스</strong>(없는 주문·오타)를 다뤄 견고함을 점검합니다.</li>
+</ul>
+</div>
+</div>
+<div class="pager"><a class="prv" href="05_따라하기-통합-에이전트-도구-RAG-메모리.html"><span class="lbl">← 이전 절</span>05. 따라하기 통합 에이전트 도구 RAG 메모리</a><a class="nxt" href="07_에러-케이스-다뤄보기.html"><span class="lbl">다음 절 →</span>07. 에러 케이스 다뤄보기</a></div>
+</div>
+</body></html>

@@ -1,0 +1,78 @@
+{
+  "test_inputs": [
+    "오늘 날씨 어때?",
+    "리모트워크의 장점이 뭐야?",
+    "문서에서 '온보딩' 찾아줘",
+    "문서에서 '화상회의' 검색해줘",
+    "128 나누기 4는 얼마야?",
+    "25 더하기 17 계산해줘",
+    "노래 한 곡 불러줘",
+    ""
+  ],
+  "test_results": [
+    {
+      "user_input": "오늘 날씨 어때?",
+      "route": "question",
+      "tool_log": [
+        "llm_direct_answer"
+      ],
+      "final_answer": "[question] 오늘 날씨는 지역에 따라 다르니, 현재 위치의 기상 정보를 확인해 보세요."
+    },
+    {
+      "user_input": "리모트워크의 장점이 뭐야?",
+      "route": "question",
+      "tool_log": [
+        "llm_direct_answer"
+      ],
+      "final_answer": "[question] 리모트워크는 유연한 근무 환경과 출퇴근 시간 절약으로 생산성과 삶의 균형을 향상시킨다."
+    },
+    {
+      "user_input": "문서에서 '온보딩' 찾아줘",
+      "route": "document",
+      "tool_log": [
+        "search_keyword('온보딩') -> True"
+      ],
+      "final_answer": "[document] '온보딩' 관련 내용을 문서에서 찾았습니다: ...만 신입 온보딩과 화상회의 운영에 대..."
+    },
+    {
+      "user_input": "문서에서 '화상회의' 검색해줘",
+      "route": "document",
+      "tool_log": [
+        "search_keyword('화상회의') -> True"
+      ],
+      "final_answer": "[document] '화상회의' 관련 내용을 문서에서 찾았습니다: ...온보딩과 화상회의 운영에 대한 보완 ..."
+    },
+    {
+      "user_input": "128 나누기 4는 얼마야?",
+      "route": "calculation",
+      "tool_log": [
+        "calculate('128  /  4') -> 32.0"
+      ],
+      "final_answer": "[calculation] 계산 결과: 32.0"
+    },
+    {
+      "user_input": "25 더하기 17 계산해줘",
+      "route": "calculation",
+      "tool_log": [
+        "calculate('25  +  17') -> 42"
+      ],
+      "final_answer": "[calculation] 계산 결과: 42"
+    },
+    {
+      "user_input": "노래 한 곡 불러줘",
+      "route": "unsupported",
+      "tool_log": [
+        "none"
+      ],
+      "final_answer": "[unsupported] 지원하지 않는 요청입니다. 질문, 문서 검색, 계산 요청만 처리할 수 있습니다."
+    },
+    {
+      "user_input": "",
+      "route": "unsupported",
+      "tool_log": [
+        "none"
+      ],
+      "final_answer": "[unsupported] 지원하지 않는 요청입니다. 질문, 문서 검색, 계산 요청만 처리할 수 있습니다."
+    }
+  ]
+}

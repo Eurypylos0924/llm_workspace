@@ -1,0 +1,22 @@
+{
+  "document_count": 9,
+  "vector_store": "Chroma",
+  "baseline_query": "리모트워크 만족도는 어땠나요?",
+  "baseline_top_results": [
+    {
+      "rank": 1,
+      "doc_id": "d6",
+      "similarity": 0.5313
+    },
+    {
+      "rank": 2,
+      "doc_id": "d3",
+      "similarity": 0.5001
+    },
+    {
+      "rank": 3,
+      "doc_id": "d2",
+      "similarity": 0.4372
+    }
+  ]
+}

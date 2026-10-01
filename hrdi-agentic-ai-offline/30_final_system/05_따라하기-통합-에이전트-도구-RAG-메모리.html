@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>제30강 — 따라하기 — 통합 에이전트 (도구 + RAG + 메모리)</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic+Coding&amp;display=swap" rel="stylesheet"/>
+<link href="../assets/style.css" rel="stylesheet"/>
+</head><body>
+<div class="topbar">
+<a class="home" href="../index.html">📚 Agentic AI 강의</a>
+<span class="ch">제30강 · final system</span>
+<span class="meta">한국기술교육대학교 · AI 특화 인재양성 과정</span>
+</div>
+<div class="wrap">
+<div class="content">
+<div class="chip-nav"><b>제30강 · final system — 세부 목차</b><a class="" href="01_조각에서-제품으로.html">01. 조각에서 제품으로</a><a class="" href="02_통합-아키텍처-한눈에.html">02. 통합 아키텍처 한눈에</a><a class="" href="03_따라하기-도구-3개-실데이터.html">03. 따라하기 도구 3개 실데이터</a><a class="" href="04_따라하기-정책-RAG-도구로.html">04. 따라하기 정책 RAG 도구로</a><a class="cur" href="05_따라하기-통합-에이전트-도구-RAG-메모리.html">05. 따라하기 통합 에이전트 도구 RAG 메모리</a><a class="" href="06_따라하기-멀티턴-시나리오-데모.html">06. 따라하기 멀티턴 시나리오 데모</a><a class="" href="07_에러-케이스-다뤄보기.html">07. 에러 케이스 다뤄보기</a><a class="" href="08_발표와-시연-가이드.html">08. 발표와 시연 가이드</a><a class="" href="09_확장-방향과-다음-학습.html">09. 확장 방향과 다음 학습</a><a class="" href="10_실습문제와-해답.html">10. 실습문제와 해답</a></div>
+<div class="md">
+<h1 id="rag">따라하기 — 통합 에이전트 (도구 + RAG + 메모리)</h1>
+<h2 id="_1">목표</h2>
+<p>03·04번에서 만든 <strong>도구 4개</strong>에 <strong>단기 메모리</strong>를 더해, 하나의 <code>create_agent</code>로 통합합니다. 시스템 프롬프트로 역할을 정하고, <code>InMemorySaver</code>로 대화를 기억하며, 28강 설계의 단일 진입점 <code>answer()</code>를 완성합니다.</p>
+<hr/>
+<h2 id="1">1. 시스템 프롬프트 — 에이전트의 역할 규칙</h2>
+<p>에이전트가 어떻게 행동할지 정하는 규칙입니다.</p>
+<pre><code class="language-python">SYSTEM_PROMPT = (
+    "너는 승승장구몰의 통합 CS 상담원이다. 친절한 한국어로 답하라.\n"
+    "- 주문 상태는 get_order_status, 재고는 get_stock, 자주 묻는 질문은 search_faq,\n"
+    "  환불/교환/멤버십 정책은 policy_search 도구를 사용하라.\n"
+    "- 정책 질문은 반드시 policy_search 결과(문서 근거)로만 답하고, 모르면 모른다고 하라.\n"
+    "- 이전 대화 맥락(예: '아까 그 정책')을 기억해 이어서 답하라."
+)
+</code></pre>
+<p><strong>핵심 지시 3가지</strong></p>
+<pre><code class="language-text">① 어떤 질문에 어떤 도구를 쓸지 안내 (도구 선택 힌트)
+② "정책은 문서 근거로만, 모르면 모른다" → 환각 방지 (16강 정신)
+③ "이전 맥락을 기억해 이어 답하라" → 메모리 활용 유도
+</code></pre>
+<p>특히 ②가 중요합니다. "지어내지 말고 문서 근거로만"이 <strong>환각을 막는</strong> 안전장치죠.</p>
+<hr/>
+<h2 id="2">2. 에이전트 빌더 — 통합의 핵심</h2>
+<p>도구 4개 + 메모리를 <code>create_agent</code>로 결합합니다.</p>
+<pre><code class="language-python">_agent = None   # 모듈 캐시 (PDF 인덱싱이 비싸서 한 번만 빌드)
+
+
+def build_agent():
+    """설정+도구+RAG+메모리를 결합한 단일 에이전트를 만든다(30강 통합의 핵심)."""
+    from langchain.agents import create_agent
+    from langgraph.checkpoint.memory import InMemorySaver
+
+    llm = get_chat(provider=cfg["llm"]["provider"], temperature=cfg["llm"]["temperature"])
+    # 도구 4종 결합: 주문/재고/FAQ 조회 + 정책 RAG 검색
+    tools = [get_order_status, get_stock, search_faq, build_policy_tool()]
+    agent = create_agent(
+        llm, tools=tools, system_prompt=SYSTEM_PROMPT,
+        checkpointer=InMemorySaver())     # InMemorySaver = 단기 메모리(thread_id 별 대화 기록)
+    logger.info(f"에이전트 구성 완료(도구 {len(tools)}개)")
+    return agent
+</code></pre>
+<p><strong>한 줄씩</strong></p>
+<ul>
+<li><strong><code>tools = [...]</code></strong> — 03번 도구 3개 + 04번 정책 RAG 도구. <strong>RAG가 다른 도구와 나란히</strong> 들어갑니다(통합 기법).</li>
+<li><strong><code>create_agent(llm, tools=, system_prompt=, checkpointer=)</code></strong> — 네 도구를 쓰는 에이전트 생성.</li>
+<li><strong><code>checkpointer=InMemorySaver()</code></strong> — 이 한 줄이 <strong>메모리</strong>입니다(19강). thread_id별로 대화를 기억.</li>
+</ul>
+<p>세 가지(도구·RAG·메모리)가 <strong>이 함수 하나</strong>에 모였습니다. 30강 통합의 정수죠.</p>
+<hr/>
+<h2 id="3-_agent">3. 왜 모듈 캐시(_agent)인가</h2>
+<pre><code class="language-python">_agent = None   # 모듈 캐시
+
+def answer(message, thread_id="demo"):
+    global _agent
+    if _agent is None:           # 최초 호출에만 빌드
+        _agent = build_agent()
+    ...
+</code></pre>
+<p><code>build_agent()</code>는 <strong>PDF 인덱싱</strong>(임베딩→FAISS)을 합니다. 이건 시간·비용이 큰 작업이죠.</p>
+<pre><code class="language-text">[캐시 없음]  answer() 부를 때마다 build_agent() → 매번 PDF 재인덱싱 (낭비!)
+[캐시 있음]  최초 1회만 빌드 → _agent에 저장 → 이후엔 재사용 (빠름)
+</code></pre>
+<p>전역 <code>_agent</code>에 한 번 만든 에이전트를 저장해두고 재사용합니다. 서버라면 매 요청마다 재인덱싱하는 참사를 막죠(29강 비용 관리, 07번 FastAPI 1회 초기화와 같은 정신).</p>
+<hr/>
+<h2 id="4-answer-28">4. 단일 진입점 answer (28강 설계)</h2>
+<p>외부에 노출되는 함수입니다.</p>
+<pre><code class="language-python">def answer(message: str, thread_id: str = "demo") -&gt; str:
+    """외부 단일 진입점(28강 설계). 같은 thread_id = 같은 대화로 묶인다."""
+    global _agent
+    if _agent is None:
+        _agent = build_agent()
+    # config 의 thread_id 로 대화 세션을 구분 → 같은 id면 이전 대화를 이어 기억
+    config = {"configurable": {"thread_id": thread_id}}
+    result = _agent.invoke({"messages": [{"role": "user", "content": message}]}, config)
+    return result["messages"][-1].content
+</code></pre>
+<p><strong>핵심</strong></p>
+<ul>
+<li><strong><code>answer(message, thread_id)</code></strong> — 28강에서 설계한 단일 진입점 그대로. 외부(CLI·FastAPI)는 이것만 부르면 됩니다.</li>
+<li><strong><code>config = {"configurable": {"thread_id": thread_id}}</code></strong> — 대화 세션 식별. 같은 <code>thread_id</code>면 이전 대화를 이어 기억(19강).</li>
+<li><strong><code>_agent.invoke({"messages": [...]}, config)</code></strong> — 메시지와 세션 설정을 함께 넘김.</li>
+<li><strong><code>result["messages"][-1].content</code></strong> — 마지막 메시지(에이전트의 답)를 꺼냄.</li>
+</ul>
+<hr/>
+<h2 id="5">5. 통합 구조 한눈에</h2>
+<p>지금까지 만든 걸 조립하면:</p>
+<p><code>answer(message, thread_id)</code> 는 두 가지를 합니다.</p>
+<ul>
+<li><strong>(최초 1회) <code>build_agent()</code></strong></li>
+<li><code>llm</code> (config의 모델·온도)</li>
+<li><code>tools = [주문, 재고, FAQ, 정책RAG]</code> ← 03·04번</li>
+<li><code>checkpointer = InMemorySaver()</code> ← 메모리(19강)</li>
+<li><strong><code>_agent.invoke(메시지, thread_id)</code></strong> → 에이전트가 도구/RAG 선택 실행 + 대화 기억 → 답변 반환</li>
+</ul>
+<p>28강 설계도(<code>AgentSpec</code>)의 <strong>TODO가 모두 채워졌습니다.</strong> <code>use_rag=True</code>(정책 도구), <code>use_memory=True</code>(InMemorySaver), <code>use_multi_agent=False</code>(단일) — 설계 그대로 구현됐죠.</p>
+<hr/>
+<h2 id="6">6. 설계 → 구현의 완성</h2>
+<p>28강 스켈레톤과 비교해 봅시다.</p>
+<pre><code class="language-text">[28강 스켈레톤]                      [30강 구현]
+def build_agent():                  def build_agent():
+    # TODO: tools, checkpointer  →      tools = [...4개...]
+    raise NotImplementedError              create_agent(..., checkpointer=InMemorySaver())
+
+def answer(message, thread_id):     def answer(message, thread_id):
+    # TODO: agent.invoke(...)    →      _agent.invoke({"messages":...}, config)
+    raise NotImplementedError              return result["messages"][-1].content
+</code></pre>
+<p>28강에서 <strong>시그니처만 박제</strong>했던 함수들의 <strong>TODO를 채웠습니다.</strong> 설계가 흔들림 없이 구현으로 이어진 거죠 — 이게 "설계 먼저"의 결실입니다(28강).</p>
+<hr/>
+<h2 id="_2">핵심 정리</h2>
+<ul>
+<li><strong>시스템 프롬프트</strong>로 역할·도구 선택·환각 방지·메모리 활용을 지시.</li>
+<li><strong><code>build_agent()</code></strong>: 도구 4개(RAG 포함) + <code>InMemorySaver</code>(메모리)를 <code>create_agent</code>로 결합 — 통합의 핵심.</li>
+<li><strong>모듈 캐시(<code>_agent</code>)</strong>: PDF 인덱싱이 비싸므로 최초 1회만 빌드 후 재사용.</li>
+<li><strong><code>answer(message, thread_id)</code></strong>: 28강 설계의 단일 진입점, <code>thread_id</code>로 세션 구분.</li>
+<li>28강 스켈레톤의 <strong>TODO를 모두 채워</strong> 설계 → 구현 완성.</li>
+<li>다음 절에서 이 에이전트로 <strong>멀티턴 시나리오</strong>를 시연합니다.</li>
+</ul>
+</div>
+</div>
+<div class="pager"><a class="prv" href="04_따라하기-정책-RAG-도구로.html"><span class="lbl">← 이전 절</span>04. 따라하기 정책 RAG 도구로</a><a class="nxt" href="06_따라하기-멀티턴-시나리오-데모.html"><span class="lbl">다음 절 →</span>06. 따라하기 멀티턴 시나리오 데모</a></div>
+</div>
+</body></html>

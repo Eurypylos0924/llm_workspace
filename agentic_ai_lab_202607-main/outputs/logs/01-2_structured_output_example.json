@@ -1,0 +1,86 @@
+{
+  "sample_analysis": {
+    "input_type": "question",
+    "summary": "사용자가 문서 요약을 요청하는 질문이다.",
+    "keywords": [
+      "문서",
+      "요약",
+      "요청",
+      "질문"
+    ],
+    "confidence": 0.95
+  },
+  "observation_rows": [
+    {
+      "id": "Q-001",
+      "expected_type": "question",
+      "actual_type": "question",
+      "confidence": 0.95,
+      "valid": true
+    },
+    {
+      "id": "Q-002",
+      "expected_type": "question",
+      "actual_type": "question",
+      "confidence": 0.95,
+      "valid": true
+    },
+    {
+      "id": "Q-003",
+      "expected_type": "question",
+      "actual_type": "question",
+      "confidence": 0.9,
+      "valid": true
+    },
+    {
+      "id": "D-001",
+      "expected_type": "document",
+      "actual_type": "document",
+      "confidence": 0.95,
+      "valid": true
+    },
+    {
+      "id": "D-002",
+      "expected_type": "document",
+      "actual_type": "question",
+      "confidence": 0.95,
+      "valid": true
+    },
+    {
+      "id": "C-001",
+      "expected_type": "calculation",
+      "actual_type": "calculation",
+      "confidence": 1.0,
+      "valid": true
+    },
+    {
+      "id": "C-002",
+      "expected_type": "calculation",
+      "actual_type": "question",
+      "confidence": 0.95,
+      "valid": true
+    },
+    {
+      "id": "U-001",
+      "expected_type": "unknown",
+      "actual_type": "question",
+      "confidence": 0.95,
+      "valid": true
+    },
+    {
+      "id": "U-002",
+      "expected_type": "unknown",
+      "actual_type": "question",
+      "confidence": 0.9,
+      "valid": true
+    }
+  ],
+  "failure_cases_tested": [
+    "JSON 문법 오류",
+    "confidence 누락",
+    "허용되지 않은 input_type",
+    "keywords 자료형 오류",
+    "confidence 문자열 오류",
+    "추가 필드 오류"
+  ]
+}

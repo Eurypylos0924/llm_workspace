@@ -1,0 +1,102 @@
+{
+  "document": "sample_report.txt",
+  "document_length": 719,
+  "strategy_summary": [
+    {
+      "전략": "고정 길이(150자)",
+      "chunk_수": 5,
+      "평균_길이": 143.6,
+      "최대_길이": 150,
+      "최소_길이": 118
+    },
+    {
+      "전략": "Overlap(150자, overlap 30)",
+      "chunk_수": 6,
+      "평균_길이": 144.7,
+      "최대_길이": 150,
+      "최소_길이": 118
+    },
+    {
+      "전략": "구조 기반",
+      "chunk_수": 6,
+      "평균_길이": 106.7,
+      "최대_길이": 144,
+      "최소_길이": 79
+    },
+    {
+      "전략": "RecursiveCharacterTextSplitter",
+      "chunk_수": 7,
+      "평균_길이": 100.9,
+      "최대_길이": 144,
+      "최소_길이": 66
+    }
+  ],
+  "structure_chunks_sample": [
+    {
+      "chunk_id": "report-01-sec-1",
+      "document_id": "report-01",
+      "section": "개요",
+      "text": "1. 개요\n본 보고서는 2025년 한 해 동안 시행된 리모트워크 제도의 운영 현황을 정리하고,\n2026년도 제도 개선 방향을 제시하기 위해 작성되었다.",
+      "length": 84,
+      "parent_id": null
+    },
+    {
+      "chunk_id": "report-01-sec-2",
+      "document_id": "report-01",
+      "section": "운영 현황",
+      "text": "2. 운영 현황\n2025년 기준 전체 임직원의 62%가 주 2회 이상 리모트워크를 사용하였다.\n부서별로는 개발팀의 사용률이 81%로 가장 높았고, 영업팀은 24%로 가장 낮았다.\n리모트워크 사용률 증가와 함께 사내 메신저 사용 시간이 평균 18% 증가하였다.",
+      "length": 144,
+      "parent_id": null
+    },
+    {
+      "chunk_id": "report-01-sec-3",
+      "document_id": "report-01",
+      "section": "만족도 조사 결과",
+      "text": "3. 만족도 조사 결과\n전체 응답자의 74%가 리모트워크 제도에 만족한다고 응답하였다.\n불만족 사유로는 협업 지연(41%), 화상회의 피로도(27%), 장비 지원 부족(19%) 순으로 나타났다.",
+      "length": 108,
+      "parent_id": null
+    },
+    {
+      "chunk_id": "report-01-sec-4",
+      "document_id": "report-01",
+      "section": "문제점",
+      "text": "4. 문제점\n일부 부서에서 리모트워크와 사무실 근무 인원 간 정보 격차가 발생하였다.\n특히 신입 직원의 경우 온보딩 과정에서 어려움을 겪는 사례가 다수 보고되었다.",
+      "length": 91,
+      "parent_id": null
+    }
+  ],
+  "rag_chunks_sample": [
+    {
+      "chunk_id": "report-01-rag-1",
+      "document_id": "report-01",
+      "section": null,
+      "text": "2026년 사내 리모트워크 운영 현황 보고서\n\n작성일: 2026-01-15\n작성부서: 인사운영팀\n문서구분: 내부 보고서",
+      "length": 66,
+      "parent_id": null
+    },
+    {
+      "chunk_id": "report-01-rag-2",
+      "document_id": "report-01",
+      "section": null,
+      "text": "1. 개요\n본 보고서는 2025년 한 해 동안 시행된 리모트워크 제도의 운영 현황을 정리하고,\n2026년도 제도 개선 방향을 제시하기 위해 작성되었다.",
+      "length": 84,
+      "parent_id": null
+    },
+    {
+      "chunk_id": "report-01-rag-3",
+      "document_id": "report-01",
+      "section": null,
+      "text": "2. 운영 현황\n2025년 기준 전체 임직원의 62%가 주 2회 이상 리모트워크를 사용하였다.\n부서별로는 개발팀의 사용률이 81%로 가장 높았고, 영업팀은 24%로 가장 낮았다.\n리모트워크 사용률 증가와 함께 사내 메신저 사용 시간이 평균 18% 증가하였다.",
+      "length": 144,
+      "parent_id": null
+    },
+    {
+      "chunk_id": "report-01-rag-4",
+      "document_id": "report-01",
+      "section": null,
+      "text": "3. 만족도 조사 결과\n전체 응답자의 74%가 리모트워크 제도에 만족한다고 응답하였다.\n불만족 사유로는 협업 지연(41%), 화상회의 피로도(27%), 장비 지원 부족(19%) 순으로 나타났다.",
+      "length": 108,
+      "parent_id": null
+    }
+  ]
+}

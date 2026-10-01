@@ -29,7 +29,7 @@ class TavilySearchEngine:
         try:
             response = self.client.search(query=query, max_results=max_results)
             results = response.get("results", [])
-
+                     
             if not results:
                 return "검색 결과가 없습니다."
 

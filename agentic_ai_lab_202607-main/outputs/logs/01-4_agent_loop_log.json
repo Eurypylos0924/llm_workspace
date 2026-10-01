@@ -1,0 +1,205 @@
+{
+  "normal_run": {
+    "steps": [
+      {
+        "action": "calculate",
+        "action_input": "128 / 4"
+      },
+      {
+        "action": "calculate",
+        "action_input": "32.0 + 17"
+      },
+      {
+        "action": "finish",
+        "action_input": "49.0"
+      }
+    ],
+    "observations": [
+      {
+        "action": {
+          "action": "calculate",
+          "action_input": "128 / 4"
+        },
+        "result": {
+          "status": "ok",
+          "output": 32.0
+        }
+      },
+      {
+        "action": {
+          "action": "calculate",
+          "action_input": "32.0 + 17"
+        },
+        "result": {
+          "status": "ok",
+          "output": 49.0
+        }
+      }
+    ],
+    "retry_count": 3,
+    "completed": true,
+    "error": null,
+    "final_answer": "49.0"
+  },
+  "broken_plan_demo": {
+    "steps": [
+      {
+        "action": "calculate",
+        "action_input": "128 / 4"
+      },
+      {
+        "action": "calculate",
+        "action_input": "128 / 4"
+      },
+      {
+        "action": "calculate",
+        "action_input": "128 / 4"
+      },
+      {
+        "action": "calculate",
+        "action_input": "128 / 4"
+      },
+      {
+        "action": "calculate",
+        "action_input": "128 / 4"
+      },
+      {
+        "action": "calculate",
+        "action_input": "128 / 4"
+      }
+    ],
+    "observations": [
+      {
+        "action": {
+          "action": "calculate",
+          "action_input": "128 / 4"
+        },
+        "result": {
+          "status": "ok",
+          "output": 32.0
+        }
+      },
+      {
+        "action": {
+          "action": "calculate",
+          "action_input": "128 / 4"
+        },
+        "result": {
+          "status": "ok",
+          "output": 32.0
+        }
+      },
+      {
+        "action": {
+          "action": "calculate",
+          "action_input": "128 / 4"
+        },
+        "result": {
+          "status": "ok",
+          "output": 32.0
+        }
+      },
+      {
+        "action": {
+          "action": "calculate",
+          "action_input": "128 / 4"
+        },
+        "result": {
+          "status": "ok",
+          "output": 32.0
+        }
+      },
+      {
+        "action": {
+          "action": "calculate",
+          "action_input": "128 / 4"
+        },
+        "result": {
+          "status": "ok",
+          "output": 32.0
+        }
+      },
+      {
+        "action": {
+          "action": "calculate",
+          "action_input": "128 / 4"
+        },
+        "result": {
+          "status": "ok",
+          "output": 32.0
+        }
+      }
+    ],
+    "retry_count": 6,
+    "completed": false
+  },
+  "fixed_broken_plan": {
+    "steps": [
+      {
+        "action": "calculate",
+        "action_input": "128 / 4"
+      },
+      {
+        "action": "calculate",
+        "action_input": "128 / 4"
+      }
+    ],
+    "observations": [
+      {
+        "action": {
+          "action": "calculate",
+          "action_input": "128 / 4"
+        },
+        "result": {
+          "status": "ok",
+          "output": 32.0
+        }
+      }
+    ],
+    "retry_count": 2,
+    "completed": false,
+    "error": "동일 행동이 반복되어 중단했습니다."
+  },
+  "fixed_normal_plan": {
+    "steps": [
+      {
+        "action": "calculate",
+        "action_input": "128 / 4"
+      },
+      {
+        "action": "calculate",
+        "action_input": "32.0 + 17"
+      },
+      {
+        "action": "finish",
+        "action_input": "49.0"
+      }
+    ],
+    "observations": [
+      {
+        "action": {
+          "action": "calculate",
+          "action_input": "128 / 4"
+        },
+        "result": {
+          "status": "ok",
+          "output": 32.0
+        }
+      },
+      {
+        "action": {
+          "action": "calculate",
+          "action_input": "32.0 + 17"
+        },
+        "result": {
+          "status": "ok",
+          "output": 49.0
+        }
+      }
+    ],
+    "retry_count": 3,
+    "completed": true,
+    "error": null,
+    "final_answer": "49.0"
+  }
+}

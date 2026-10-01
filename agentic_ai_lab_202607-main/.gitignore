@@ -1,0 +1,23 @@
+track1_core/solution/
+track1_core/solution_v2/
+track1_core/worksheet/
+track2_practical1/
+track3_practical2/
+.agents/
+.codex/
+.tmp/
+.venv/
+__pycache__/
+
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+.env
+
+# Virtual environments
+.venv/

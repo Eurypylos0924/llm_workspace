@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>제30강 — [신규] 에러 케이스 다뤄보기 (주문 없음·오타)</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic+Coding&amp;display=swap" rel="stylesheet"/>
+<link href="../assets/style.css" rel="stylesheet"/>
+</head><body>
+<div class="topbar">
+<a class="home" href="../index.html">📚 Agentic AI 강의</a>
+<span class="ch">제30강 · final system</span>
+<span class="meta">한국기술교육대학교 · AI 특화 인재양성 과정</span>
+</div>
+<div class="wrap">
+<div class="content">
+<div class="chip-nav"><b>제30강 · final system — 세부 목차</b><a class="" href="01_조각에서-제품으로.html">01. 조각에서 제품으로</a><a class="" href="02_통합-아키텍처-한눈에.html">02. 통합 아키텍처 한눈에</a><a class="" href="03_따라하기-도구-3개-실데이터.html">03. 따라하기 도구 3개 실데이터</a><a class="" href="04_따라하기-정책-RAG-도구로.html">04. 따라하기 정책 RAG 도구로</a><a class="" href="05_따라하기-통합-에이전트-도구-RAG-메모리.html">05. 따라하기 통합 에이전트 도구 RAG 메모리</a><a class="" href="06_따라하기-멀티턴-시나리오-데모.html">06. 따라하기 멀티턴 시나리오 데모</a><a class="cur" href="07_에러-케이스-다뤄보기.html">07. 에러 케이스 다뤄보기</a><a class="" href="08_발표와-시연-가이드.html">08. 발표와 시연 가이드</a><a class="" href="09_확장-방향과-다음-학습.html">09. 확장 방향과 다음 학습</a><a class="" href="10_실습문제와-해답.html">10. 실습문제와 해답</a></div>
+<div class="md">
+<h1 id="_1">[신규] 에러 케이스 다뤄보기 (주문 없음·오타)</h1>
+<h2 id="_2">한 줄 요약</h2>
+<p>06번은 <strong>정상 시나리오</strong>였습니다. 이번엔 일부러 <strong>잘못된 입력</strong>(없는 주문번호, 상품명 오타, 정책에 없는 질문, 맥락 없는 지시어)을 던집니다. 잘 만든 에이전트는 <strong>거짓을 지어내지 않고</strong>(환각 방지), 한계를 <strong>정직하게</strong> 말해야 합니다. 그걸 검증합니다.</p>
+<blockquote>
+<p>실습 파일: <code>sections/30_final_system/07_에러-케이스-다뤄보기.py</code></p>
+</blockquote>
+<hr/>
+<h2 id="1">1. 왜 에러 케이스를 일부러 테스트하나</h2>
+<p>정상 입력만 잘 되는 건 절반의 완성입니다. 실제 고객은 <strong>오타·없는 주문·엉뚱한 질문</strong>을 끊임없이 던집니다.</p>
+<pre><code class="language-text">[나쁜 에이전트]  없는 주문 → "배송 중입니다" (그럴듯하게 지어냄 = 환각! 위험)
+[좋은 에이전트]  없는 주문 → "해당 주문을 찾을 수 없습니다" (정직)
+</code></pre>
+<p>가장 위험한 건 <strong>환각</strong>입니다. 없는 주문에 가짜 운송장을 만들어내면 고객이 속죠(1강의 그 위험). <strong>"모르면 모른다"</strong> 고 말하는 에이전트가 신뢰할 수 있는 에이전트입니다.</p>
+<hr/>
+<h2 id="2-4">2. 에러 시나리오 4가지</h2>
+<p>각 시나리오와 <strong>기대 동작</strong>을 정의합니다.</p>
+<pre><code class="language-python">SCENARIOS = [
+    ("주문 O999999 상태 알려줘",
+     "기대: 존재하지 않는 주문 → '찾을 수 없음' 안내(임의 상태 지어내기 금지)"),
+    ("'로봇청쇼기' 재고 있어?",
+     "기대: 오타/미존재 상품 → 재고 정보 없음 안내(수량 환각 금지)"),
+    ("승승장구몰 우주배송 정책이 어떻게 돼?",
+     "기대: 정책 문서에 근거 없음 → 모른다/확인 불가 안내(없는 정책 창작 금지)"),
+    ("아까 그거 다시 알려줘",
+     "기대: 가리킬 직전 맥락 없음 → 무엇인지 명확화 요청(아무거나 추측 금지)"),
+]
+</code></pre>
+<pre><code class="language-text">① 없는 주문번호 (O999999)      → "찾을 수 없음"
+② 상품명 오타 ('로봇청쇼기')    → "재고 정보 없음"
+③ 정책에 없는 질문 (우주배송)   → "모른다/확인 불가"
+④ 맥락 없는 지시어 (아까 그거)  → "무엇인지 되묻기"
+</code></pre>
+<p>각각 <strong>기대 동작</strong>을 미리 적어, 실제 출력과 대조합니다.</p>
+<hr/>
+<h2 id="3-1">3. 1차 방어선 — 도구 단위 점검</h2>
+<p>LLM에 넣기 전에, <strong>도구가 에러 입력을 어떻게 처리하는지</strong> 직접 봅니다.</p>
+<pre><code class="language-python">def check_tools_directly() -&gt; None:
+    """LLM 없이 도구 단위 동작부터 확인한다(에러 처리의 1차 방어선)."""
+    print("  없는 주문:", get_order_status.invoke({"order_id": "O999999"}))
+    print("  오타 상품:", get_stock.invoke({"product_name": "로봇청쇼기"}))
+    print("  엉뚱 FAQ:", search_faq.invoke({"keyword": "우주배송"}))
+</code></pre>
+<p><strong>예상 출력</strong></p>
+<pre><code class="language-text">  없는 주문: 주문번호 O999999 를 찾을 수 없습니다.
+  오타 상품: '로봇청쇼기' 상품 재고 정보를 찾을 수 없습니다.
+  엉뚱 FAQ: 관련 FAQ를 찾지 못했습니다.
+</code></pre>
+<p>03번에서 도구마다 <strong>"친절한 실패 메시지"</strong> 를 반환하게 만든 게 여기서 빛을 발합니다. 도구가 예외를 던지지 않고 <strong>"없음"을 문자열로</strong> 반환하니, 에이전트가 그걸 읽고 자연스럽게 안내할 수 있죠. 이게 <strong>에러 처리의 1차 방어선</strong>입니다.</p>
+<hr/>
+<h2 id="4-2">4. 2차 방어선 — 에이전트의 정직함</h2>
+<p>이제 같은 에러 입력을 <strong>에이전트</strong>에 던집니다.</p>
+<pre><code class="language-python">if __name__ == "__main__":
+    check_tools_directly()
+
+    tid = "edge-test-1"
+    for i, (q, expect) in enumerate(SCENARIOS, 1):
+        print(f"[턴 {i}] 고객:", q)
+        print(f"  ⤷ {expect}")
+        print("상담원:", answer(q, thread_id=tid))
+</code></pre>
+<p><strong>예상 출력</strong></p>
+<pre><code class="language-text">[턴 1] 고객: 주문 O999999 상태 알려줘
+  ⤷ 기대: 존재하지 않는 주문 → '찾을 수 없음' 안내
+상담원: 주문번호 O999999는 확인되지 않습니다. 번호를 다시 확인해 주시겠어요?
+
+[턴 2] 고객: '로봇청쇼기' 재고 있어?
+  ⤷ 기대: 오타/미존재 상품 → 재고 정보 없음 안내
+상담원: '로봇청쇼기' 상품의 재고 정보를 찾을 수 없습니다. 정확한 상품명을 알려주시면 ...
+
+[턴 3] 고객: 승승장구몰 우주배송 정책이 어떻게 돼?
+  ⤷ 기대: 정책 문서에 근거 없음 → 모른다 안내
+상담원: 우주배송 정책은 확인되지 않습니다. 저희가 안내 가능한 정책은 환불/교환/멤버십입니다.
+
+[턴 4] 고객: 아까 그거 다시 알려줘
+  ⤷ 기대: 직전 맥락 없음 → 명확화 요청
+상담원: '아까 그거'가 무엇인지 구체적으로 말씀해 주시겠어요?
+</code></pre>
+<hr/>
+<h2 id="5">5. 관찰 — 환각 없이 정직하게</h2>
+<p>각 응답의 핵심:</p>
+<pre><code class="language-text">턴 1: 가짜 배송 상태를 만들지 않음 → "확인되지 않습니다" (환각 방지 ✅)
+턴 2: 임의 재고 수량을 지어내지 않음 → "찾을 수 없습니다" (환각 방지 ✅)
+턴 3: 없는 정책을 창작하지 않음 → "확인되지 않습니다" + 가능한 정책 안내 (환각 방지 ✅)
+턴 4: 아무거나 추측하지 않음 → 무엇인지 되물음 (명확화 ✅)
+</code></pre>
+<p><strong>좋은 에이전트의 핵심 덕목은 "모를 때 모른다고 하는 것"</strong> 입니다. 시스템 프롬프트의 "모르면 모른다고 하라"(05번)와 도구의 "친절한 실패 메시지"(03번)가 함께 작동한 결과죠.</p>
+<hr/>
+<h2 id="6">6. 두 겹의 안전망</h2>
+<p>에러 처리가 <strong>두 단계</strong>로 작동했습니다.</p>
+<pre><code class="language-text">[1차: 도구 레벨]   없는 데이터 → "찾을 수 없습니다" 문자열 반환 (예외 안 던짐)
+       ↓
+[2차: 에이전트 레벨] 그 메시지를 읽고 → 고객에게 정중히 안내 + 대안 제시
+</code></pre>
+<p>도구가 <strong>튼튼하게 실패</strong>(03번 친절한 메시지)하고, 에이전트가 <strong>정직하게 전달</strong>(05번 환각 방지 프롬프트)합니다. 이 두 겹이 신뢰할 수 있는 서비스를 만듭니다. 24·26강의 "부분 실패 허용", 29강 "폴백"과 같은 정신이죠.</p>
+<blockquote>
+<p><strong>실무 보강</strong>: 비가역 행동(환불 실행 등)엔 <strong>human-in-the-loop</strong>(사람 승인)을 더합니다. "환불해줘" → 바로 실행하지 말고 "정말 환불할까요?" 확인. 위험한 행동일수록 안전장치를 두는 거죠(28강 확장).</p>
+</blockquote>
+<hr/>
+<h2 id="_3">핵심 정리</h2>
+<ul>
+<li>정상 시나리오(06번)에 이어, <strong>잘못된 입력</strong>(없는 주문·오타·없는 정책·맥락 없는 지시)을 테스트.</li>
+<li>가장 위험한 건 <strong>환각</strong> — 없는 정보를 지어내면 안 됨. <strong>"모르면 모른다"</strong> 가 핵심 덕목.</li>
+<li><strong>1차 방어선(도구)</strong>: 친절한 실패 메시지 반환(예외 안 던짐, 03번).</li>
+<li><strong>2차 방어선(에이전트)</strong>: 그 메시지를 읽고 정직하게 안내(환각 방지 프롬프트, 05번).</li>
+<li>두 겹의 안전망이 <strong>신뢰할 수 있는 서비스</strong>를 만듦.</li>
+<li>비가역 행동엔 <strong>human-in-the-loop</strong> 추가(실무 보강).</li>
+<li>다음 절에서 발표·시연 가이드를 봅니다.</li>
+</ul>
+</div>
+</div>
+<div class="pager"><a class="prv" href="06_따라하기-멀티턴-시나리오-데모.html"><span class="lbl">← 이전 절</span>06. 따라하기 멀티턴 시나리오 데모</a><a class="nxt" href="08_발표와-시연-가이드.html"><span class="lbl">다음 절 →</span>08. 발표와 시연 가이드</a></div>
+</div>
+</body></html>

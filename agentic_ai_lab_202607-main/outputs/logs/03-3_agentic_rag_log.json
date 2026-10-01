@@ -1,0 +1,95 @@
+{
+  "max_retry": 2,
+  "scenarios": [
+    {
+      "label": "search_not_required",
+      "question": "1 더하기 1은 얼마인가요?",
+      "result": {
+        "question": "1 더하기 1은 얼마인가요?",
+        "search_required": false,
+        "search_queries": [],
+        "retrieved_documents": [],
+        "evidence_valid": false,
+        "retry_count": 0,
+        "citations": [],
+        "final_answer": "1 더하기 1은 2입니다."
+      }
+    },
+    {
+      "label": "sufficient_first_try",
+      "question": "리모트워크 만족도는 어땠나요?",
+      "result": {
+        "question": "리모트워크 만족도는 어땠나요?",
+        "search_required": true,
+        "search_queries": [
+          "리모트워크 만족도 조사 결과"
+        ],
+        "retrieved_documents": [
+          {
+            "document_id": "report-01",
+            "doc_id": "d3",
+            "section": "만족도 조사 결과",
+            "text": "전체 응답자의 74%가 리모트워크 제도에 만족한다고 응답하였다. 불만족 사유로는 협업 지연, 화상회의 피로도, 장비 지원 부족 순으로 나타났다.",
+            "similarity": 0.555367648601532
+          },
+          {
+            "document_id": "report-01",
+            "doc_id": "d6",
+            "section": "결론",
+            "text": "리모트워크 제도는 임직원 만족도와 생산성 측면에서 긍정적인 효과를 보였으나, 협업과 온보딩 절차에 대한 보완이 필요하다.",
+            "similarity": 0.5181587934494019
+          }
+        ],
+        "evidence_valid": true,
+        "retry_count": 0,
+        "citations": [
+          {
+            "doc_id": "d3",
+            "section": "만족도 조사 결과"
+          },
+          {
+            "doc_id": "d6",
+            "section": "결론"
+          }
+        ],
+        "final_answer": "리모트워크 만족도는 전체 응답자의 74%가 만족한다고 응답할 정도로 높은 편이었습니다. 다만, 불만족 사유로는 협업 지연, 화상회의 피로도, 장비 지원 부족 등이 있었습니다. 또한, 임직원 만족도와 생산성 측면에서 긍정적인 효과가 있었으나, 협업과 온보딩 절차에 대한 보완이 필요하다는 점도 지적되었습니다."
+      }
+    },
+    {
+      "label": "retry_exhausted",
+      "question": "회사 창립년도는 언제인가요?",
+      "result": {
+        "question": "회사 창립년도는 언제인가요?",
+        "search_required": true,
+        "search_queries": [
+          "회사 창립년도는 언제인가요?",
+          "회사 창립년도는 언제인가요?"
+        ],
+        "retrieved_documents": [
+          {
+            "section": "개선 방향",
+            "document_id": "report-01",
+            "doc_id": "d5",
+            "text": "2026년에는 팀별 필수 출근일을 지정하고, 화상회의 시간을 기본 30분으로 단축하는 가이드라인을 도입할 예정이다.",
+            "similarity": 0.16542232036590576
+          },
+          {
+            "doc_id": "d1",
+            "section": "개요",
+            "document_id": "report-01",
+            "text": "본 보고서는 2025년 한 해 동안 시행된 리모트워크 제도의 운영 현황을 정리하고, 2026년도 제도 개선 방향을 제시하기 위해 작성되었다.",
+            "similarity": 0.16442948579788208
+          }
+        ],
+        "evidence_valid": false,
+        "retry_count": 2,
+        "citations": [],
+        "final_answer": "확인된 근거가 부족하여 확정적으로 답변할 수 없습니다. 관련 문서를 다시 확인해 주세요."
+      }
+    }
+  ],
+  "llm_call_count_comparison": {
+    "naive_rag": 1,
+    "agentic_rag": 4
+  }
+}

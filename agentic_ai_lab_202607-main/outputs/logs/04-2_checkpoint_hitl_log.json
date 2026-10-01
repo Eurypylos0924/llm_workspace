@@ -1,0 +1,18 @@
+{
+  "mini_demo": {
+    "first_interrupt_value": "좋아하는 색은 무엇인가요?",
+    "second": {
+      "answer": "파란색"
+    }
+  },
+  "review_naive": {
+    "thread_id": "review-001",
+    "notify_call_count": 2,
+    "final_result": "[외부 고객] 문서 점검이 완료되었습니다."
+  },
+  "review_fixed": {
+    "thread_id": "review-002",
+    "notify_call_count_fixed": 1,
+    "final_result": "[외부 고객] 문서 점검이 완료되었습니다."
+  }
+}

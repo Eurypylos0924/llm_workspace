@@ -1,13 +1,13 @@
-# mcp_host/host.py
+# mcp_client/client.py
 
 import asyncio
 import os
 import sys
 from typing import Any, Dict, List
 
+import anyio
 from dotenv import load_dotenv
 
-# 이 파일 위치에서 상위 폴더로 올라가며 .env를 탐색 (llm_workspace/.env)
 load_dotenv(override=True)
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
@@ -31,7 +31,7 @@ class MCPClient:
         self.available_tools: List[Dict[str, Any]] = []
 
     async def connect_and_run(self, user_prompt: str):
-        """MCP Server에 연결하고 세션을 유지한 채 프롬프트를 실행합니다."""
+        """MCP Server에 연결하고 백그라운드 작업 그룹(Task Group) 내에서 session을 유지 및 실행합니다."""
         env = os.environ.copy()
         env["PYTHONPATH"] = os.getcwd()
 
@@ -46,14 +46,12 @@ class MCPClient:
             # 2. ClientSession 인스턴스 생성
             async with ClientSession(read, write) as session:
                 self.session = session
-
-                # 3. 세션 초기화
-                # (mcp 2.2의 ClientSession은 async with 진입 시 수신 루프를 자동으로 시작하므로
-                #  session.run()을 따로 띄울 필요가 없음. 2.2에는 run 메서드 자체가 없음)
+                
+                # 4. 세션 초기화 
                 await session.initialize()
                 print("✅ [MCP Host] MCP Server 세션 초기화 완료!")
 
-                # 4. Tool 목록 가져오기 및 LangChain 바인딩
+                # 5. Tool 목록 가져오기 및 LangChain 바인딩
                 tools_response = await session.list_tools()
                 self.available_tools = [
                     {
@@ -70,9 +68,11 @@ class MCPClient:
                     self.available_tools
                 )
 
-                # 5. 프롬프트 실행
+                # 6. 프롬프트 실행
                 result = await self.run_prompt(user_prompt)
                 print(f"\n💬 [최종 답변]:\n{result}")
+
+                    
 
     async def run_prompt(self, user_prompt: str) -> str:
         if not self.session or not self.llm_with_tools:
@@ -123,4 +123,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+   asyncio.run(main())

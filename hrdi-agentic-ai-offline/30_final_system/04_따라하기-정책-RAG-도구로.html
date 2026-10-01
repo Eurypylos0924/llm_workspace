@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>제30강 — 따라하기 — 정책 RAG를 도구로</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic+Coding&amp;display=swap" rel="stylesheet"/>
+<link href="../assets/style.css" rel="stylesheet"/>
+</head><body>
+<div class="topbar">
+<a class="home" href="../index.html">📚 Agentic AI 강의</a>
+<span class="ch">제30강 · final system</span>
+<span class="meta">한국기술교육대학교 · AI 특화 인재양성 과정</span>
+</div>
+<div class="wrap">
+<div class="content">
+<div class="chip-nav"><b>제30강 · final system — 세부 목차</b><a class="" href="01_조각에서-제품으로.html">01. 조각에서 제품으로</a><a class="" href="02_통합-아키텍처-한눈에.html">02. 통합 아키텍처 한눈에</a><a class="" href="03_따라하기-도구-3개-실데이터.html">03. 따라하기 도구 3개 실데이터</a><a class="cur" href="04_따라하기-정책-RAG-도구로.html">04. 따라하기 정책 RAG 도구로</a><a class="" href="05_따라하기-통합-에이전트-도구-RAG-메모리.html">05. 따라하기 통합 에이전트 도구 RAG 메모리</a><a class="" href="06_따라하기-멀티턴-시나리오-데모.html">06. 따라하기 멀티턴 시나리오 데모</a><a class="" href="07_에러-케이스-다뤄보기.html">07. 에러 케이스 다뤄보기</a><a class="" href="08_발표와-시연-가이드.html">08. 발표와 시연 가이드</a><a class="" href="09_확장-방향과-다음-학습.html">09. 확장 방향과 다음 학습</a><a class="" href="10_실습문제와-해답.html">10. 실습문제와 해답</a></div>
+<div class="md">
+<h1 id="rag">따라하기 — 정책 RAG를 도구로</h1>
+<h2 id="_1">목표</h2>
+<p>마지막 네 번째 도구 — <strong>정책 RAG</strong>를 만듭니다. 정책/멤버십 PDF를 임베딩→FAISS→retriever로 만든 뒤, <code>create_retriever_tool</code>로 <strong>하나의 도구</strong>로 감쌉니다. 이게 "RAG를 도구로" 통합 기법의 핵심입니다.</p>
+<hr/>
+<h2 id="1-rag">1. 왜 RAG를 "도구"로 만드나</h2>
+<p>03번에서 만든 주문·재고·FAQ는 모두 <code>@tool</code>입니다. 정책 검색도 <strong>같은 도구</strong>로 만들면, 에이전트가 다른 도구들과 똑같이 다룰 수 있습니다.</p>
+<pre><code class="language-text">[RAG를 따로 두면]
+   에이전트 안에 "정책 질문이면 RAG, 아니면 도구" 분기 코드 필요 (복잡)
+
+[RAG를 도구로 만들면]
+   policy_search 도 get_order_status 와 같은 '도구'
+   → 에이전트가 질문 보고 스스로 선택 (분기 불필요!)
+</code></pre>
+<p><code>create_retriever_tool</code>이 RAG 검색기를 도구로 감싸 줍니다. 그러면 정책 검색이 <strong>네 번째 도구</strong>가 되어 나란히 놓이죠.</p>
+<hr/>
+<h2 id="2-rag-1316">2. RAG 파이프라인 복습 (13~16강)</h2>
+<p>정책 도구를 만들려면 RAG 5단계를 거칩니다.</p>
+<pre><code class="language-text">① PDF 로드      : 정책 PDF들을 페이지 문서로 읽기
+② 청크 분할     : 긴 문서를 검색 단위로 잘게 자르기
+③ 임베딩       : 각 청크를 벡터로 변환
+④ FAISS 색인    : 벡터들을 검색 가능한 인덱스로
+⑤ retriever     : 질문과 관련된 청크를 찾아주는 검색기
+   → create_retriever_tool 로 도구화
+</code></pre>
+<p>13~16강에서 배운 그대로입니다. 이번엔 마지막에 <strong>도구로 감싸는</strong> 단계가 추가됩니다.</p>
+<hr/>
+<h2 id="3">3. 정책 도구 빌더</h2>
+<pre><code class="language-python">def build_policy_tool():
+    """정책/멤버십 PDF를 임베딩→FAISS→retriever→도구로 만든다."""
+    from langchain_community.document_loaders import PyPDFLoader
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+    from langchain_community.vectorstores import FAISS
+    from langchain_core.tools.retriever import create_retriever_tool
+
+    logger.info("정책 문서 인덱싱 시작(RAG)")
+    docs = []
+    for name in ["환불교환정책.pdf", "멤버십정책.pdf"]:
+        docs += PyPDFLoader(str(DOCS / name)).load()     # ① PDF들을 페이지 문서로 로드
+    splitter = RecursiveCharacterTextSplitter(           # ② 긴 문서를 검색 단위로 분할
+        chunk_size=cfg["rag"]["chunk_size"], chunk_overlap=cfg["rag"]["chunk_overlap"])
+    chunks = splitter.split_documents(docs)
+    vs = FAISS.from_documents(chunks, get_embeddings())  # ③④ 임베딩 → FAISS 색인
+    retriever = vs.as_retriever(search_kwargs={"k": cfg["rag"]["top_k"]})  # ⑤ 상위 k개 검색기
+    logger.info(f"정책 문서 인덱싱 완료(청크 {len(chunks)}개)")
+    return create_retriever_tool(                        # 검색기를 '도구'로 래핑
+        retriever, "policy_search",
+        "환불/교환/멤버십 등 승승장구몰 사내 정책 문서를 검색한다.")  # ← LLM이 읽는 도구 설명
+</code></pre>
+<p>한 줄씩 보겠습니다.</p>
+<hr/>
+<h2 id="4">4. 단계별 해설</h2>
+<p><strong>① PDF 로드</strong></p>
+<pre><code class="language-python">for name in ["환불교환정책.pdf", "멤버십정책.pdf"]:
+    docs += PyPDFLoader(str(DOCS / name)).load()
+</code></pre>
+<p>정책 PDF 2개를 읽어 페이지 단위 문서로 만듭니다. <code>+=</code>로 두 PDF의 문서를 한 리스트에 모읍니다.</p>
+<p><strong>② 청크 분할</strong></p>
+<pre><code class="language-python">splitter = RecursiveCharacterTextSplitter(
+    chunk_size=cfg["rag"]["chunk_size"], chunk_overlap=cfg["rag"]["chunk_overlap"])
+chunks = splitter.split_documents(docs)
+</code></pre>
+<p>긴 문서를 검색 단위(청크)로 자릅니다. <strong>크기·겹침을 config에서</strong> 읽어, 코드 수정 없이 튜닝(29강). <code>config.yaml</code>엔 <code>chunk_size: 500, chunk_overlap: 50</code>.</p>
+<p><strong>③④ 임베딩 + FAISS</strong></p>
+<pre><code class="language-python">vs = FAISS.from_documents(chunks, get_embeddings())
+</code></pre>
+<p>청크들을 벡터로 변환(임베딩)해 FAISS 인덱스를 구축합니다. <code>get_embeddings()</code>는 <code>common.py</code>의 헬퍼(14강).</p>
+<p><strong>⑤ retriever</strong></p>
+<pre><code class="language-python">retriever = vs.as_retriever(search_kwargs={"k": cfg["rag"]["top_k"]})
+</code></pre>
+<p>질문과 유사한 청크 <strong>상위 k개</strong>를 찾는 검색기. <code>top_k</code>도 config에서(과하면 비용↑, 29강).</p>
+<hr/>
+<h2 id="5-create_retriever_tool">5. 핵심 — create_retriever_tool</h2>
+<p>마지막 한 줄이 통합의 열쇠입니다.</p>
+<pre><code class="language-python">return create_retriever_tool(
+    retriever, "policy_search",
+    "환불/교환/멤버십 등 승승장구몰 사내 정책 문서를 검색한다.")
+</code></pre>
+<p><code>create_retriever_tool(검색기, 도구이름, 도구설명)</code>:</p>
+<pre><code class="language-text">- retriever     : 방금 만든 정책 검색기
+- "policy_search": 도구 이름 (에이전트가 부를 이름)
+- "환불/교환..."  : 도구 설명 = LLM이 읽고 "정책 질문엔 이 도구"를 판단하는 근거
+</code></pre>
+<p>이 한 줄로 RAG 검색기가 <strong><code>@tool</code>과 똑같은 도구</strong>가 됩니다. 세 번째 인자(설명)가 특히 중요 — 03번 도구들의 독스트링과 같은 역할로, LLM이 이 도구를 <strong>언제 쓸지</strong> 판단합니다(6·17강 도구 description).</p>
+<hr/>
+<h2 id="6-rag">6. 왜 정책만 RAG인가</h2>
+<p>네 도구 중 정책만 RAG인 이유를 짚어봅시다(28강 판단 복습).</p>
+<pre><code class="language-text">주문·재고·FAQ → CSV의 '구조화 데이터' → 그냥 조회(@tool)면 됨
+정책         → PDF의 '긴 비구조 문서' → 검색해 근거로 답해야(RAG)
+</code></pre>
+<p>주문은 <code>orders[orders["order_id"]==...]</code>로 정확히 조회됩니다. 하지만 정책은 <strong>긴 문장 문서</strong>라, "환불 며칠?"에 답하려면 <strong>관련 부분을 검색</strong>해야 하죠. 그래서 정책만 RAG입니다. 데이터 성격에 맞는 도구를 고른 것(28강 구성요소 판단).</p>
+<hr/>
+<h2 id="_2">핵심 정리</h2>
+<ul>
+<li>마지막 도구 <strong>정책 RAG</strong> — PDF를 임베딩→FAISS→retriever로 만든 뒤 도구로 감쌈.</li>
+<li>RAG 5단계(로드→분할→임베딩→색인→검색)는 13~16강 그대로, config로 파라미터 관리.</li>
+<li><strong><code>create_retriever_tool(검색기, 이름, 설명)</code></strong> — RAG를 <code>@tool</code>과 같은 도구로 만드는 열쇠.</li>
+<li>도구 <strong>설명</strong>이 LLM의 선택 근거 — 명확히 써야 정책 질문에 이 도구를 고름.</li>
+<li><strong>정책만 RAG</strong>인 이유: 긴 비구조 문서라 검색이 필요(주문·재고는 구조화 → 조회).</li>
+<li>다음 절에서 네 도구 + 메모리를 <strong>하나의 에이전트로 통합</strong>합니다.</li>
+</ul>
+</div>
+</div>
+<div class="pager"><a class="prv" href="03_따라하기-도구-3개-실데이터.html"><span class="lbl">← 이전 절</span>03. 따라하기 도구 3개 실데이터</a><a class="nxt" href="05_따라하기-통합-에이전트-도구-RAG-메모리.html"><span class="lbl">다음 절 →</span>05. 따라하기 통합 에이전트 도구 RAG 메모리</a></div>
+</div>
+</body></html>

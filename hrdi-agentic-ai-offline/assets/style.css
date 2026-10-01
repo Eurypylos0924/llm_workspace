@@ -1,0 +1,102 @@
+/* course_html — 화면용 강의 사이트 스타일 */
+:root{
+  --accent:#1f6feb; --accent-soft:#e7f0ff; --ink:#1c1c1e; --muted:#5b6b7b;
+  --line:#d9dde3; --code-bg:#f6f8fa; --sidebar:#0f1b2d; --sidebar-acc:#4493f8;
+  --mono:"Nanum Gothic Coding","D2Coding","NanumGothicCoding","Sarasa Mono K","Noto Sans Mono CJK KR","SFMono-Regular",Consolas,"Courier New",monospace;
+}
+*{ box-sizing:border-box; }
+body{
+  margin:0; background:#eef2f6;
+  font-family:"Apple SD Gothic Neo","Malgun Gothic","맑은 고딕","Noto Sans KR",-apple-system,sans-serif;
+  color:var(--ink); line-height:1.75; font-size:16px;
+}
+a{ color:var(--accent); text-decoration:none; }
+a:hover{ text-decoration:underline; }
+
+/* 상단바 */
+.topbar{
+  position:sticky; top:0; z-index:10; background:var(--sidebar); color:#fff;
+  padding:12px 22px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+}
+.topbar .home{ color:#fff; font-weight:800; }
+.topbar .ch{ color:var(--sidebar-acc); font-weight:600; }
+.topbar .meta{ margin-left:auto; color:#9fb3c8; font-size:13px; }
+
+/* 본문 래퍼 */
+.wrap{ max-width:980px; margin:0 auto; padding:0 0 70px; background:#fff;
+       box-shadow:0 0 30px rgba(0,0,0,.06); min-height:100vh; }
+.content{ padding:26px 44px 10px; }
+
+/* 절 이동(이전/다음) */
+.pager{ display:flex; gap:10px; padding:18px 44px 30px; }
+.pager a, .pager span{
+  flex:1; border:1px solid var(--line); border-radius:10px; padding:12px 16px;
+  background:#fbfdff; color:#234; font-size:14px;
+}
+.pager a:hover{ border-color:var(--accent); text-decoration:none;
+                box-shadow:0 4px 14px rgba(31,111,235,.12); }
+.pager .nxt{ text-align:right; }
+.pager .lbl{ display:block; font-size:11px; color:var(--muted); margin-bottom:3px; }
+.pager .off{ opacity:.4; }
+
+/* 이 강의 다른 절(칩 네비) */
+.chip-nav{ background:#f3f7fb; border:1px solid #dce6f0; border-radius:10px;
+           padding:12px 16px; margin:0 0 22px; }
+.chip-nav b{ display:block; color:#1f6feb; font-size:13px; margin-bottom:6px; }
+.chip-nav a{ display:inline-block; margin:3px 8px 3px 0; padding:4px 10px;
+             background:#fff; border:1px solid #cfe0f0; border-radius:14px;
+             font-size:13px; color:#234; }
+.chip-nav a:hover{ background:var(--sidebar-acc); color:#fff; text-decoration:none; }
+.chip-nav a.cur{ background:var(--accent); color:#fff; border-color:var(--accent); font-weight:700; }
+
+/* 마크다운 본문 요소 */
+.md h1{ font-size:27px; color:var(--accent); border-bottom:3px solid var(--accent);
+        padding-bottom:8px; margin:6px 0 18px; }
+.md h2{ font-size:21px; margin:1.5em 0 .6em; padding:6px 12px;
+        border-left:5px solid var(--accent); background:var(--accent-soft); }
+.md h3{ font-size:17.5px; color:#20303f; margin:1.3em 0 .5em; }
+.md h4{ font-size:15.5px; color:var(--muted); }
+.md p,.md li{ font-size:16px; }
+.md pre{ background:var(--code-bg); border:1px solid var(--line); border-radius:8px;
+         padding:14px 16px; font-size:13.5px; line-height:1.6; overflow-x:auto; }
+.md code{ font-family:var(--mono); }
+.md :not(pre)>code{ background:var(--code-bg); border:1px solid var(--line);
+        border-radius:4px; padding:1px 6px; font-size:13.5px; color:#b3261e; }
+.md table{ border-collapse:collapse; width:100%; margin:14px 0; font-size:14.5px; }
+.md th,.md td{ border:1px solid var(--line); padding:7px 10px; text-align:left; vertical-align:top; }
+.md th{ background:var(--accent-soft); }
+.md tr:nth-child(even) td{ background:#fafbfc; }
+.md blockquote{ margin:14px 0; padding:10px 16px; border-left:4px solid #f0b400;
+        background:#fff8e1; color:#5c4400; border-radius:0 8px 8px 0; }
+.md hr{ border:none; border-top:1px dashed var(--line); margin:22px 0; }
+.md ul,.md ol{ padding-left:24px; }
+.md img{ max-width:100%; }
+
+/* ASCII 도식 — 박스/화살표 문자로 그린 도식을 도식 패널로 표시 */
+.ascii-diagram{ margin:20px 0; padding:18px 20px; border:1px solid #cdd9e5;
+  border-radius:10px; background:#f7fbff; overflow-x:auto; text-align:center;
+  box-shadow:inset 0 0 0 1px #fff, 0 1px 3px rgba(15,27,45,.05); }
+.ascii-diagram pre{ display:inline-block; text-align:left; margin:0; padding:0;
+  background:none; border:none; white-space:pre; color:#23425f;
+  font-family:var(--mono); font-size:13px; line-height:1.5; }
+
+/* index */
+.cover-hero{ text-align:center; padding:34px 20px 6px; }
+.cover-hero img{ max-width:440px; width:72%; border-radius:10px;
+                 box-shadow:0 6px 24px rgba(0,0,0,.18); }
+.index-title{ text-align:center; font-size:26px; font-weight:800; margin:18px 0 4px; }
+.index-sub{ text-align:center; color:var(--muted); margin:0 0 18px; }
+.lesson{ border:1px solid #dce6f0; border-radius:12px; margin:14px 0; overflow:hidden; }
+.lesson-head{ background:#f3f7fb; padding:12px 18px; border-bottom:1px solid #dce6f0; }
+.lesson-head .no{ color:var(--accent); font-weight:800; font-size:13px; }
+.lesson-head .t{ font-size:18px; font-weight:700; }
+.lesson-head .d{ color:var(--muted); font-size:13px; margin-top:2px; }
+.sec-list{ list-style:none; margin:0; padding:8px 10px; display:grid;
+           grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:4px; }
+.sec-list a{ display:block; padding:8px 12px; border-radius:8px; color:#1c2733; font-size:14.5px; }
+.sec-list a:hover{ background:var(--accent-soft); text-decoration:none; }
+.sec-list a .sno{ color:var(--accent); font-weight:700; font-variant-numeric:tabular-nums; margin-right:6px; }
+.tag-new{ display:inline-block; background:#2e9e6b; color:#fff; font-size:10.5px;
+          font-weight:700; border-radius:4px; padding:0 6px; margin-left:4px; vertical-align:1px; }
+
+@media (max-width:640px){ .content{ padding:20px 18px; } .pager{ padding:14px 18px; flex-direction:column; } }

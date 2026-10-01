@@ -1,0 +1,9 @@
+{
+  "thread_id": "review-001",
+  "state": {
+    "document_text": "이 문서를 점검해줘.",
+    "audience": "외부 고객",
+    "result": "[외부 고객] 문서 점검이 완료되었습니다."
+  },
+  "next_nodes": []
+}

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>제30강 — 통합 아키텍처 한눈에</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic+Coding&amp;display=swap" rel="stylesheet"/>
+<link href="../assets/style.css" rel="stylesheet"/>
+</head><body>
+<div class="topbar">
+<a class="home" href="../index.html">📚 Agentic AI 강의</a>
+<span class="ch">제30강 · final system</span>
+<span class="meta">한국기술교육대학교 · AI 특화 인재양성 과정</span>
+</div>
+<div class="wrap">
+<div class="content">
+<div class="chip-nav"><b>제30강 · final system — 세부 목차</b><a class="" href="01_조각에서-제품으로.html">01. 조각에서 제품으로</a><a class="cur" href="02_통합-아키텍처-한눈에.html">02. 통합 아키텍처 한눈에</a><a class="" href="03_따라하기-도구-3개-실데이터.html">03. 따라하기 도구 3개 실데이터</a><a class="" href="04_따라하기-정책-RAG-도구로.html">04. 따라하기 정책 RAG 도구로</a><a class="" href="05_따라하기-통합-에이전트-도구-RAG-메모리.html">05. 따라하기 통합 에이전트 도구 RAG 메모리</a><a class="" href="06_따라하기-멀티턴-시나리오-데모.html">06. 따라하기 멀티턴 시나리오 데모</a><a class="" href="07_에러-케이스-다뤄보기.html">07. 에러 케이스 다뤄보기</a><a class="" href="08_발표와-시연-가이드.html">08. 발표와 시연 가이드</a><a class="" href="09_확장-방향과-다음-학습.html">09. 확장 방향과 다음 학습</a><a class="" href="10_실습문제와-해답.html">10. 실습문제와 해답</a></div>
+<div class="md">
+<h1 id="_1">통합 아키텍처 한눈에</h1>
+<h2 id="_2">한 줄 요약</h2>
+<p>완성될 시스템의 <strong>전체 그림</strong>입니다. 사용자 질문이 들어오면 <code>create_agent</code>가 <strong>4개 도구</strong>(주문·재고·FAQ·정책RAG) 중 알맞은 걸 골라 쓰고, <strong>InMemorySaver</strong>가 대화를 기억하며, 29강 <strong>설정·로깅</strong>이 이 모두를 감쌉니다. 핵심은 <strong>"RAG도 도구로 만들어"</strong> 모든 능력을 하나의 에이전트에 통일하는 것입니다.</p>
+<hr/>
+<h2 id="1">1. 전체 아키텍처</h2>
+<p>위에서 아래로 흐릅니다.</p>
+<ol>
+<li><strong><code>config.yaml</code> + <code>.env</code>(키)</strong> → <strong>설정/로깅 로더(29강)</strong></li>
+<li><strong>사용자 질문 + thread_id</strong> → <strong><code>create_agent</code></strong>(system_prompt: 역할/규칙)</li>
+<li>에이전트가 아래 구성요소를 골라 사용:</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>구성요소</th>
+<th>종류 / 소스</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>get_order_status</code></td>
+<td>도구 → orders.csv</td>
+</tr>
+<tr>
+<td><code>get_stock</code></td>
+<td>도구 → inventory.csv</td>
+</tr>
+<tr>
+<td><code>search_faq</code></td>
+<td>도구 → faq.csv</td>
+</tr>
+<tr>
+<td><code>policy_search</code></td>
+<td>RAG → FAISS (정책 PDF)</td>
+</tr>
+<tr>
+<td><code>InMemorySaver</code></td>
+<td>thread_id별 단기기억</td>
+</tr>
+</tbody>
+</table>
+<ol start="4">
+<li>→ <strong>최종 답변</strong></li>
+</ol>
+<p>위에서 아래로 읽습니다: <strong>설정 로드 → 에이전트 생성 → 도구/RAG 선택 실행 → 메모리 기록 → 답변.</strong> 28강에서 그린 청사진(아키텍처)을 그대로 구현한 모습입니다.</p>
+<hr/>
+<h2 id="2">2. 각 요소와 담당 요구사항</h2>
+<table>
+<thead>
+<tr>
+<th>요소</th>
+<th>구현</th>
+<th>담당 요구사항</th>
+<th>배운 강</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>주문 조회</td>
+<td><code>@tool get_order_status</code> (orders.csv)</td>
+<td>R2</td>
+<td>5·12강</td>
+</tr>
+<tr>
+<td>재고 조회</td>
+<td><code>@tool get_stock</code> (inventory.csv)</td>
+<td>R3</td>
+<td>5·12강</td>
+</tr>
+<tr>
+<td>FAQ</td>
+<td><code>@tool search_faq</code> (faq.csv)</td>
+<td>R4</td>
+<td>12강</td>
+</tr>
+<tr>
+<td>정책 RAG</td>
+<td><code>create_retriever_tool</code> (FAISS)</td>
+<td>R1</td>
+<td>13~18강</td>
+</tr>
+<tr>
+<td>단기 기억</td>
+<td><code>InMemorySaver</code> + thread_id</td>
+<td>R5</td>
+<td>19강</td>
+</tr>
+<tr>
+<td>설정·로깅</td>
+<td><code>config.yaml</code> + <code>logging</code></td>
+<td>운영</td>
+<td>29강</td>
+</tr>
+</tbody>
+</table>
+<p>28강에서 정의한 요구사항 R1~R5가 <strong>각 요소로 빠짐없이</strong> 구현됩니다. 설계가 곧 구현으로 이어진 거죠.</p>
+<hr/>
+<h2 id="3-rag">3. 핵심 통합 기법 — RAG를 도구로</h2>
+<p>이 아키텍처의 가장 중요한 발상입니다.</p>
+<pre><code class="language-text">[보통 생각]   도구는 도구, RAG는 RAG — 따로 처리
+              → 에이전트 안에 'if 정책질문 then RAG else 도구' 분기 필요 (복잡)
+
+[통합 발상]   RAG도 '도구'로 만들어 다른 도구와 나란히 넣음
+              → 에이전트가 질문 보고 스스로 도구 선택 (분기 불필요)
+</code></pre>
+<p><code>create_retriever_tool</code>이 정책 검색 retriever를 <strong>하나의 도구</strong>로 감쌉니다. 그러면 <code>policy_search</code>가 <code>get_order_status</code>와 <strong>똑같은 도구</strong>가 되어, 에이전트가 알아서 고르죠.</p>
+<pre><code class="language-python">tools = [
+    get_order_status,      # 도구
+    get_stock,             # 도구
+    search_faq,            # 도구
+    build_policy_tool(),   # RAG를 도구로 감싼 것 ← 나란히!
+]
+agent = create_agent(llm, tools=tools, ...)
+</code></pre>
+<p>에이전트는 "정책 질문이네 → policy_search", "주문 질문이네 → get_order_status"를 <strong>스스로 판단</strong>합니다. 능력을 도구로 통일한 덕입니다(5강 함수 호출 + 18강 통합 패턴).</p>
+<hr/>
+<h2 id="4">4. 세 가지 능력이 한 에이전트에</h2>
+<p>완성된 에이전트는 한 대화 안에서 세 가지를 <strong>함께</strong> 씁니다.</p>
+<pre><code class="language-text">"환불 절차 알려줘"      → RAG    (정책 PDF 검색 → 근거 있는 답)
+"내 주문 O000050은?"   → 도구    (orders.csv 실시간 조회)
+"아까 그 정책 다시"     → 메모리   (이전 맥락 기억 → 환불로 해석)
+</code></pre>
+<p><strong>질문</strong> → <strong>하나의 <code>create_agent</code></strong>(질문 분석 → 알맞은 도구/RAG 선택 → 실행, + InMemorySaver가 대화 맥락 유지) → <strong>답변</strong></p>
+<p>따로 배운 RAG·도구·메모리가 <strong>한 에이전트 안에서 협력</strong>합니다. 이게 30강 졸업작품의 핵심이고, 06번에서 직접 시연합니다.</p>
+<hr/>
+<h2 id="5-29">5. 운영 계층이 감싼다 (29강)</h2>
+<p>이 에이전트는 진공 속에 있지 않습니다. 29강의 <strong>운영 계층</strong>이 둘러쌉니다.</p>
+<pre><code class="language-text">- 설정: config.yaml 에서 모델·온도·RAG 파라미터(top_k 등) 로드
+- 로깅: 인덱싱·도구 호출·에러를 logs/agent.log 에 기록
+- 진입점: answer(message, thread_id) — 28강 설계의 단일 진입점
+- (선택) FastAPI: 29강 /chat 에 answer()를 끼우면 HTTP 서비스
+</code></pre>
+<p>비즈니스 로직(에이전트)과 운영 계층(설정·로깅·HTTP)이 <strong>분리</strong>돼 있어, 본체는 그대로 두고 운영만 갈아끼울 수 있습니다(28·29강 원칙).</p>
+<hr/>
+<h2 id="_3">핵심 정리</h2>
+<ul>
+<li>전체 흐름: <strong>설정 로드 → create_agent → 도구/RAG 선택 → 메모리 기록 → 답변</strong>.</li>
+<li>요구사항 R1~R5가 <strong>각 요소로 빠짐없이</strong> 구현(주문·재고·FAQ·정책RAG·메모리).</li>
+<li>핵심 기법: <strong>RAG를 <code>create_retriever_tool</code>로 도구화</strong> → 다른 도구와 나란히 → 에이전트가 스스로 선택.</li>
+<li>RAG·도구·메모리 <strong>세 능력이 한 에이전트에서 협력</strong>(06번 시연).</li>
+<li>29강 <strong>설정·로깅·진입점</strong>이 운영 계층으로 감쌈(본체와 분리).</li>
+<li>다음 절부터 이 아키텍처를 코드로 조립합니다(03번 도구부터).</li>
+</ul>
+</div>
+</div>
+<div class="pager"><a class="prv" href="01_조각에서-제품으로.html"><span class="lbl">← 이전 절</span>01. 조각에서 제품으로</a><a class="nxt" href="03_따라하기-도구-3개-실데이터.html"><span class="lbl">다음 절 →</span>03. 따라하기 도구 3개 실데이터</a></div>
+</div>
+</body></html>

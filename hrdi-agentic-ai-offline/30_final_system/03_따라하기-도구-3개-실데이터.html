@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>제30강 — 따라하기 — 도구 3개 (실데이터 조회)</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic+Coding&amp;display=swap" rel="stylesheet"/>
+<link href="../assets/style.css" rel="stylesheet"/>
+</head><body>
+<div class="topbar">
+<a class="home" href="../index.html">📚 Agentic AI 강의</a>
+<span class="ch">제30강 · final system</span>
+<span class="meta">한국기술교육대학교 · AI 특화 인재양성 과정</span>
+</div>
+<div class="wrap">
+<div class="content">
+<div class="chip-nav"><b>제30강 · final system — 세부 목차</b><a class="" href="01_조각에서-제품으로.html">01. 조각에서 제품으로</a><a class="" href="02_통합-아키텍처-한눈에.html">02. 통합 아키텍처 한눈에</a><a class="cur" href="03_따라하기-도구-3개-실데이터.html">03. 따라하기 도구 3개 실데이터</a><a class="" href="04_따라하기-정책-RAG-도구로.html">04. 따라하기 정책 RAG 도구로</a><a class="" href="05_따라하기-통합-에이전트-도구-RAG-메모리.html">05. 따라하기 통합 에이전트 도구 RAG 메모리</a><a class="" href="06_따라하기-멀티턴-시나리오-데모.html">06. 따라하기 멀티턴 시나리오 데모</a><a class="" href="07_에러-케이스-다뤄보기.html">07. 에러 케이스 다뤄보기</a><a class="" href="08_발표와-시연-가이드.html">08. 발표와 시연 가이드</a><a class="" href="09_확장-방향과-다음-학습.html">09. 확장 방향과 다음 학습</a><a class="" href="10_실습문제와-해답.html">10. 실습문제와 해답</a></div>
+<div class="md">
+<h1 id="3">따라하기 — 도구 3개 (실데이터 조회)</h1>
+<h2 id="_1">목표</h2>
+<p>통합 에이전트의 첫 부품인 <strong>도구 3개</strong>를 만듭니다 — 주문 조회·재고 조회·FAQ 검색. 모두 승승장구몰의 <strong>실제 CSV 데이터</strong>를 조회합니다. 실제 파일은 <code>code/ch30_final.py</code> 입니다. (28강 스켈레톤의 TODO를 채우는 과정입니다.)</p>
+<hr/>
+<h2 id="0">0. 실습 준비</h2>
+<pre><code class="language-bash">conda activate agentic
+
+# 30강 통합에 필요한 라이브러리(전부 이전 강에서 설치한 것들)
+#  - langgraph, langchain : create_agent, 메모리
+#  - langchain-community  : PDF 로더·FAISS (04번 RAG에서)
+#  - faiss-cpu, pypdf     : 벡터 검색·PDF (04번)
+#  - pyyaml               : config 로드 (29강)
+pip install -U langgraph langchain langchain-google-genai langchain-community faiss-cpu pypdf pyyaml
+
+python code/common.py        # GOOGLE_API_KEY: True 확인
+</code></pre>
+<ul>
+<li>데이터: <code>orders.csv</code>, <code>inventory.csv</code>, <code>faq.csv</code> (+ 04번에서 정책 PDF).</li>
+</ul>
+<hr/>
+<h2 id="1-29">1. 시작부 + 29강 자산 재사용</h2>
+<p><code>code/ch30_final.py</code>를 만듭니다. <strong>29강의 설정·로깅을 그대로 가져옵니다.</strong></p>
+<pre><code class="language-python"># -*- coding: utf-8 -*-
+# 실행: python code/ch30_final.py
+import sys, pathlib
+sys.path.append(str(pathlib.Path(__file__).resolve().parent))  # code/ 를 import 경로에
+from common import get_chat, get_embeddings, DATA, DOCS
+from ch29_deploy import load_config, setup_logging              # 29강 자산(설정·로깅) 재사용
+
+import pandas as pd
+from langchain_core.tools import tool
+
+cfg = load_config()          # 29강 설정 로드(모델·온도·RAG 파라미터)
+logger = setup_logging(cfg)  # 29강 구조적 로깅
+
+orders = pd.read_csv(DATA / "orders.csv")        # 주문 데이터
+inventory = pd.read_csv(DATA / "inventory.csv")  # 재고 데이터
+faq = pd.read_csv(DATA / "faq.csv")              # FAQ 데이터
+</code></pre>
+<ul>
+<li><code>from ch29_deploy import load_config, setup_logging</code> — 29강에서 만든 <strong>운영 자산을 재사용</strong>. 설정·로깅을 다시 안 만듭니다.</li>
+<li>CSV 3개를 <strong>모듈 로드 시 한 번</strong> 읽어 전역에 둡니다(매 호출마다 안 읽게).</li>
+</ul>
+<hr/>
+<h2 id="2-r2">2. 주문 조회 도구 (R2)</h2>
+<pre><code class="language-python">@tool
+def get_order_status(order_id: str) -&gt; str:
+    """[R2] 주문번호(예: O000050)로 주문 상태/상품/금액을 조회한다.
+
+    @tool docstring 은 LLM이 읽는 도구 설명서다. LLM은 주문 관련 질문이 오면 이 도구를 고른다.
+    """
+    hit = orders[orders["order_id"] == order_id.strip().upper()]
+    if hit.empty:
+        return f"주문번호 {order_id} 를 찾을 수 없습니다."
+    r = hit.iloc[0]
+    return (f"주문 {r.order_id}: {r.product_name} {r.quantity}개, "
+            f"{int(r.amount):,}원, 주문일 {r.order_date}, 상태={r.status}")
+</code></pre>
+<p><strong>핵심</strong></p>
+<ul>
+<li><strong><code>@tool</code> 데코레이터</strong> — 함수를 에이전트가 쓸 수 있는 도구로 만듦(5강).</li>
+<li><strong>독스트링이 도구 설명서</strong> — LLM이 이 설명을 읽고 "주문 질문엔 이 도구"를 고릅니다. 그래서 독스트링을 명확히 씁니다(6강).</li>
+<li><strong><code>order_id.strip().upper()</code></strong> — 입력 정규화(공백 제거, 대문자). "o000050"도 "O000050"으로.</li>
+<li><strong>없으면 "찾을 수 없습니다"</strong> — 에러가 아니라 <strong>친절한 메시지</strong> 반환(07번 에러 처리의 기초).</li>
+</ul>
+<hr/>
+<h2 id="3-r3">3. 재고 조회 도구 (R3)</h2>
+<pre><code class="language-python">@tool
+def get_stock(product_name: str) -&gt; str:
+    """[R3] 상품명(일부)으로 재고 수량을 조회한다."""
+    hit = inventory[inventory["product_name"].str.contains(product_name, na=False)]
+    if hit.empty:
+        return f"'{product_name}' 상품 재고 정보를 찾을 수 없습니다."
+    return "\n".join(f"{r.product_name}: 재고 {r.stock}개({r.warehouse}창고)"
+                     for r in hit.head(3).itertuples())
+</code></pre>
+<p><strong>핵심</strong></p>
+<ul>
+<li><strong><code>str.contains(product_name)</code></strong> — 상품명 <strong>일부</strong>로 검색. "이어버드"로 "무선 이어버드 프로"를 찾음.</li>
+<li><strong><code>na=False</code></strong> — 결측값(NaN)을 False로 처리해 에러 방지.</li>
+<li><strong><code>head(3)</code></strong> — 여러 개 매칭돼도 상위 3개만(너무 길어지지 않게).</li>
+</ul>
+<hr/>
+<h2 id="4-faq-r4">4. FAQ 검색 도구 (R4)</h2>
+<pre><code class="language-python">@tool
+def search_faq(keyword: str) -&gt; str:
+    """[R4] 키워드로 FAQ에서 관련 답변을 찾는다."""
+    hit = faq[faq["question"].str.contains(keyword, na=False)]
+    if hit.empty:
+        hit = faq[faq["answer"].str.contains(keyword, na=False)]   # 질문에 없으면 답변에서도
+    if hit.empty:
+        return "관련 FAQ를 찾지 못했습니다."
+    return "\n".join(f"Q.{r.question}\nA.{r.answer}" for r in hit.head(2).itertuples())
+</code></pre>
+<p><strong>핵심</strong></p>
+<ul>
+<li><strong>2단계 검색</strong> — 먼저 질문(<code>question</code>)에서 찾고, 없으면 답변(<code>answer</code>)에서도 검색. 적중률을 높임.</li>
+<li>못 찾으면 "관련 FAQ를 찾지 못했습니다" — 역시 친절한 메시지.</li>
+</ul>
+<hr/>
+<h2 id="5">5. 도구의 공통 설계 원칙</h2>
+<p>세 도구가 공유하는 좋은 설계 패턴입니다.</p>
+<pre><code class="language-text">① 명확한 독스트링: [R2] 같은 요구사항 번호 + 무엇을 하는지 → LLM이 잘 고름
+② 입력 정규화:     strip().upper(), str.contains → 사용자 입력의 사소한 차이 흡수
+③ 친절한 실패:     없으면 에러가 아니라 "찾을 수 없습니다" 문자열 반환
+④ 적당한 길이:     head(2~3)으로 결과를 제한 → 토큰 절약(29강 비용)
+</code></pre>
+<p>특히 <strong>③ 친절한 실패</strong>가 중요합니다. 도구가 예외를 던지면 에이전트가 멈추지만, <strong>문자열로 "없음"을 반환</strong>하면 에이전트가 그걸 읽고 "주문을 찾을 수 없네요"라고 자연스럽게 안내합니다. 이게 07번 에러 처리의 1차 방어선입니다.</p>
+<hr/>
+<h2 id="6">6. 도구 단위로 테스트</h2>
+<p>에이전트에 넣기 전에, 도구만 따로 호출해 확인할 수 있습니다.</p>
+<pre><code class="language-python"># @tool 로 만든 함수는 .invoke({"인자명": 값}) 로 직접 호출
+print(get_order_status.invoke({"order_id": "O000050"}))
+# 주문 O000050: 자기계발 다이어리 2개, 36,000원, 주문일 2025-10-29, 상태=배송완료
+
+print(get_stock.invoke({"product_name": "다이어리"}))
+print(search_faq.invoke({"keyword": "무료배송"}))
+</code></pre>
+<p>도구를 <strong>단위로 먼저 검증</strong>하면, 나중에 에이전트가 이상하게 답할 때 "도구가 문제인지, LLM 판단이 문제인지" 구분할 수 있습니다.</p>
+<hr/>
+<h2 id="_2">핵심 정리</h2>
+<ul>
+<li>통합의 첫 부품: <strong>도구 3개</strong>(<code>get_order_status</code>·<code>get_stock</code>·<code>search_faq</code>) — 실제 CSV 조회.</li>
+<li><strong>29강 자산(<code>load_config</code>·<code>setup_logging</code>) 재사용</strong> — 설정·로깅을 다시 안 만듦.</li>
+<li>도구 설계: <strong>명확한 독스트링 + 입력 정규화 + 친절한 실패 + 적당한 길이</strong>.</li>
+<li><strong>친절한 실패</strong>(없으면 문자열 "없음" 반환)가 07번 에러 처리의 1차 방어선.</li>
+<li><code>.invoke({...})</code>로 <strong>도구 단위 테스트</strong> 가능.</li>
+<li>다음 절에서 마지막 도구 — <strong>정책 RAG를 도구로</strong> 만듭니다.</li>
+</ul>
+</div>
+</div>
+<div class="pager"><a class="prv" href="02_통합-아키텍처-한눈에.html"><span class="lbl">← 이전 절</span>02. 통합 아키텍처 한눈에</a><a class="nxt" href="04_따라하기-정책-RAG-도구로.html"><span class="lbl">다음 절 →</span>04. 따라하기 정책 RAG 도구로</a></div>
+</div>
+</body></html>

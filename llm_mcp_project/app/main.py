@@ -28,7 +28,7 @@ settings = get_settings()
 # FastAPI 애플리케이션 객체를 생성합니다.
 app = FastAPI(
     title=settings.app_name,
-    description="FastAPI → NVIDIA → MCP Client → MCP Server → 외부 시스템 구조",
+    description="FastAPI → OpenAI → MCP Client → MCP Server → 외부 시스템 구조",
     version="1.0.0",
 )
 

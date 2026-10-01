@@ -1,0 +1,69 @@
+{
+  "context_example": {
+    "thread_id": "thread-1",
+    "message_count": 4
+  },
+  "state_example": {
+    "result_short": {
+      "document_text": "짧은 문서입니다",
+      "word_count": 2,
+      "flagged": false
+    },
+    "result_long": {
+      "document_text": "이 문서는 여러 문장으로 이루어진 상당히 긴 외부 공개용 보고서입니다",
+      "word_count": 10,
+      "flagged": true
+    },
+    "independent": true
+  },
+  "memory_examples": {
+    "u1_final": [
+      {
+        "key": "부서",
+        "value": "개발팀",
+        "category": "fact",
+        "created_at": 0,
+        "updated_at": 0,
+        "expires_at": null
+      },
+      {
+        "key": "선호_커뮤니케이션",
+        "value": "이메일",
+        "category": "preference",
+        "created_at": 0,
+        "updated_at": 0,
+        "expires_at": null
+      }
+    ],
+    "u2_after_deduplication": [
+      {
+        "key": "선호_커뮤니케이션",
+        "value": "슬랙",
+        "category": "preference",
+        "created_at": 6,
+        "updated_at": 6,
+        "expires_at": null
+      }
+    ]
+  },
+  "langgraph_memory_bridge": {
+    "thread_a_message_count": 4,
+    "thread_b_message_count": 2,
+    "u1_namespace": [
+      "users",
+      "u1",
+      "memories"
+    ],
+    "u1_memories": [
+      {
+        "value": "이메일",
+        "category": "preference"
+      },
+      {
+        "value": "간결한 답변",
+        "category": "preference"
+      }
+    ],
+    "cross_thread_recall": "사용자 장기 기억: 이메일, 간결한 답변"
+  }
+}

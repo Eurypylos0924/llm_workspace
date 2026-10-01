@@ -1,0 +1,121 @@
+{
+  "architecture": "Adaptive Workflow + Tool Agent",
+  "node_count": 10,
+  "vector_store": {
+    "type": "Chroma",
+    "collection": "sample_documents",
+    "path": "E:\\agentic_ai_lab\\outputs\\vectorstore\\chroma"
+  },
+  "test_cases": [
+    {
+      "label": "일반 질문",
+      "input": "리모트워크의 장점이 뭐야?",
+      "input_type": "question",
+      "hitl_resumed": false,
+      "selected_tools": [],
+      "completed": true,
+      "retry_count": 0,
+      "evidence_valid": false,
+      "error": null,
+      "final_answer": "리모트워크의 장점은 여러 가지가 있습니다:\n\n1. **유연한 근무 시간**: 출퇴근 시간에 구애받지 않고 자신에게 맞는 시간에 일할 수 있어 일과 삶의 균형을 맞추기 쉽습니다.\n\n2. **출퇴근 시간 절약**: 통근 시간이 없어져 그 시간을 다른 생산적인 활동이나 휴식에 활용할 수 있습니다.\n\n3. **장소에 구애받지 않음**: 특정 장소에 얽매이지 않고 어디서든 일할 수 있어 거주지 선택의 자유가 커집니다.\n\n4. **업무 집중도 향상**: 사무실 내 방해 요소가 줄어들어 집중해서 일하기 좋은 환경을 만들 수 있습니다.\n\n5. **비용 절감**: 교통비, 식비, 옷차림 등 업무 관련 비용이 줄어듭니다.\n\n6. **다양한 인재 확보 가능**: 기업 입장에서는 지리적 제약 없이 우수한 인재를 채용할 수 있습니다.\n\n7. **환경 보호**: 출퇴근 차량 이용 감소로 탄소 배출량이 줄어들어 환경에 긍정적인 영향을 미칩니다.\n\n이처럼 리모트워크는 개인과 기업 모두에게 다양한 이점을 제공합니다."
+    },
+    {
+      "label": "문서 분석",
+      "input": "문서에서 '온보딩' 관련 내용을 분석해줘",
+      "input_type": "document",
+      "hitl_resumed": false,
+      "selected_tools": [
+        "search_knowledge_tool"
+      ],
+      "completed": true,
+      "retry_count": 0,
+      "evidence_valid": true,
+      "error": null,
+      "final_answer": "문서에 따르면 '온보딩'과 관련된 내용은 [d4]에 주로 나타나 있습니다. 일부 부서에서 리모트워크(재택근무)와 사무실 근무 인원 간에 정보 격차가 발생하였고, 특히 신입 직원의 온보딩 과정에서 어려움이 보고된 점이 언급되어 있습니다. 이는 신입 직원이 원활하게 조직에 적응하고 업무를 익히는 데 있어 리모트워크 환경이 장애 요인으로 작용했음을 시사합니다.\n\n[d8]에서는 재택근무 직원이 매일 오전 정기 화상 회의에 참여해 업무 현황을 공유해야 한다고 명시되어 있는데, 이 내용은 온보딩 과정의 구체적인 어려움에 대한 직접적인 언급은 없으나, 신입 직원이 이러한 화상 회의에 참여함으로써 정보 격차를 줄이려는 시도가 있을 수 있음을 간접적으로 보여줍니다.\n\n요약하면, 문서 내 온보딩 관련 내용은 신입 직원이 리모트워크 환경에서 정보 격차로 인해 온보딩에 어려움을 겪고 있다는 점이며, 이를 해소하기 위한 정기 화상 회의 참여가 이루어지고 있다는 점이 확인됩니다."
+    },
+    {
+      "label": "계산 Tool 사용",
+      "input": "128 나누기 4는 얼마야?",
+      "input_type": "calculation",
+      "hitl_resumed": false,
+      "selected_tools": [
+        "calculate_knowledge_tool"
+      ],
+      "completed": true,
+      "retry_count": 0,
+      "evidence_valid": false,
+      "error": null,
+      "final_answer": "128 나누기 4는 32입니다."
+    },
+    {
+      "label": "지식 검색",
+      "input": "문서에서 '화상회의' 관련 자료를 찾아줘",
+      "input_type": "document",
+      "hitl_resumed": false,
+      "selected_tools": [
+        "search_knowledge_tool"
+      ],
+      "completed": true,
+      "retry_count": 0,
+      "evidence_valid": true,
+      "error": null,
+      "final_answer": "문서에서 '화상회의' 관련 자료는 다음과 같습니다.\n\n- 재택근무를 하는 직원은 매일 오전 정기 화상 회의에 접속해 업무 현황을 공유해야 한다. [d8]\n- 2026년에는 팀별 필수 출근일을 지정하고, 화상회의 시간을 기본 30분으로 단축하는 가이드라인을 도입할 예정이다. [d5]"
+    },
+    {
+      "label": "정보 부족/HITL",
+      "input": "이 문서를 검토해줘",
+      "input_type": "document",
+      "hitl_resumed": true,
+      "selected_tools": [
+        "search_knowledge_tool"
+      ],
+      "completed": true,
+      "retry_count": 0,
+      "evidence_valid": true,
+      "error": null,
+      "final_answer": "문서 검토 결과, 온보딩과 관련하여 다음과 같은 점을 확인할 수 있습니다.\n\n- 일부 부서에서 리모트워크(재택근무)와 사무실 근무 인원 간 정보 격차가 발생하고 있으며, 특히 신입 직원의 온보딩 과정에서 어려움이 보고되고 있습니다([d4]).\n- 재택근무를 하는 직원은 매일 오전 정기 화상 회의에 접속하여 업무 현황을 공유해야 한다는 규정이 있습니다([d8]).\n\n따라서 온보딩 과정에서 신입 직원이 리모트워크 환경에 적응하는 데 어려움이 있으며, 이를 해소하기 위해 정기적인 화상 회의 참여가 요구되고 있음을 알 수 있습니다. 문서 내용은 온보딩 과정의 문제점과 현재 시행 중인 커뮤니케이션 방식을 명확히 제시하고 있습니다."
+    },
+    {
+      "label": "검색 실패",
+      "input": "문서에서 '화성 이주' 관련 내용을 찾아줘",
+      "input_type": "document",
+      "hitl_resumed": false,
+      "selected_tools": [
+        "search_knowledge_tool",
+        "search_knowledge_tool"
+      ],
+      "completed": true,
+      "retry_count": 2,
+      "evidence_valid": false,
+      "error": null,
+      "final_answer": "확인된 근거가 부족하여 확정적으로 답변할 수 없습니다. 관련 문서를 다시 확인해 주세요."
+    },
+    {
+      "label": "지원하지 않는 입력",
+      "input": "노래 한 곡 불러줘",
+      "input_type": "unsupported",
+      "hitl_resumed": false,
+      "selected_tools": [],
+      "completed": true,
+      "retry_count": 0,
+      "evidence_valid": false,
+      "error": null,
+      "final_answer": "지원하지 않는 요청입니다. 질문, 문서 검색, 계산 요청만 처리할 수 있습니다."
+    },
+    {
+      "label": "Tool 실행 실패",
+      "input": "10 나누기 0은?",
+      "input_type": "calculation",
+      "hitl_resumed": false,
+      "selected_tools": [
+        "calculate_knowledge_tool"
+      ],
+      "completed": true,
+      "retry_count": 0,
+      "evidence_valid": false,
+      "error": "0으로 나눌 수 없습니다.",
+      "final_answer": "[오류] 0으로 나눌 수 없습니다."
+    }
+  ],
+  "llm_call_count": 38
+}
