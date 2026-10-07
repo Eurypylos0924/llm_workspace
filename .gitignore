@@ -13,3 +13,8 @@ wheels/
 .env
 credentials.json
 token.json
+
+# Downloaded datasets (re-downloadable)
+멀티모달_CLIP_BLIP/data/MNIST/
+멀티모달_CLIP_BLIP/data/cifar-10-batches-py/
+멀티모달_CLIP_BLIP/data/cifar-10-python.tar.gz

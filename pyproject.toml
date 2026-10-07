@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "chromadb>=1.5.9",
+    "datasets>=5.1.0",
     "defusedxml>=0.7.1",
     "dotenv>=0.9.9",
     "faiss-cpu>=1.15.0",
@@ -53,6 +54,7 @@ dependencies = [
     "streamlit>=1.64.0",
     "tavily-python>=0.8.4",
     "tiktoken>=0.14.0",
+    "torchvision>=0.29.1",
     "transformers>=5.17.0",
     "uvicorn>=0.53.0",
     "wikipedia>=1.4.0",
