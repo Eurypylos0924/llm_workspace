@@ -18,3 +18,4 @@ token.json
 멀티모달_CLIP_BLIP/data/MNIST/
 멀티모달_CLIP_BLIP/data/cifar-10-batches-py/
 멀티모달_CLIP_BLIP/data/cifar-10-python.tar.gz
+멀티모달_CLIP_BLIP/data/caltech101/
