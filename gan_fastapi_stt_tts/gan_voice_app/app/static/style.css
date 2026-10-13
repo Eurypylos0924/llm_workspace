@@ -1,0 +1,18 @@
+/* 웹 화면의 글꼴과 배경색을 정의한다. */
+body { margin: 0; background: #f3f6fa; color: #18243a; font-family: Arial, 'Malgun Gothic', sans-serif; }
+/* 화면이 넓어져도 콘텐츠가 지나치게 퍼지지 않도록 폭을 제한한다. */
+.container { max-width: 900px; margin: 30px auto; padding: 0 18px; }
+.subtitle { color: #536179; }
+/* 기능별 섹션을 구분하기 위해 카드 형태의 패널을 사용한다. */
+.panel { background: white; padding: 22px; margin: 18px 0; border-radius: 12px; box-shadow: 0 2px 14px #1e293b12; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+button, select { padding: 10px 14px; margin: 5px 8px 5px 0; font-size: 15px; border-radius: 7px; border: 1px solid #cbd5e1; }
+button { background: #155bd5; color: white; cursor: pointer; border-color: #155bd5; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+/* MNIST 이미지는 최근접 보간으로 확대하여 픽셀 구조를 선명하게 표시한다. */
+.image-wrap { overflow-x: auto; }
+#generatedImage { max-width: 100%; height: auto; image-rendering: pixelated; background: black; }
+#status { font-weight: 600; }
+#downloadLink { display: inline-block; margin-top: 12px; }
+[hidden] { display: none !important; }
+audio { width: 100%; }

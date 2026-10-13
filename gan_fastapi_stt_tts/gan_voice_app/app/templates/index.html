@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>음성으로 MNIST 숫자 생성</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <main class="container">
+    <h1>음성으로 숫자 이미지 생성</h1>
+    <p class="subtitle">FastAPI · OpenAI STT/TTS · PyTorch Conditional GAN</p>
+    <section class="panel">
+      <h2>1. 음성 명령</h2>
+      <p>예시: “숫자 7 이미지를 생성해 줘.”</p>
+      <div class="actions">
+        <button id="recordBtn">녹음 시작</button>
+        <button id="stopBtn" disabled>녹음 종료 및 인식</button>
+      </div>
+      <p><strong>인식 문장:</strong> <span id="transcript">-</span></p>
+    </section>
+    <section class="panel">
+      <h2>2. 숫자 이미지 생성</h2>
+      <label for="digit">숫자</label>
+      <select id="digit">
+        <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+        <option value="3">3</option><option value="4">4</option><option value="5">5</option>
+        <option value="6">6</option><option value="7" selected>7</option><option value="8">8</option><option value="9">9</option>
+      </select>
+      <label for="count">이미지 개수</label>
+      <select id="count"><option value="1">1장</option><option value="4">4장</option><option value="8">8장</option></select>
+      <button id="generateBtn">선택 숫자 생성</button>
+      <p id="status" role="status" aria-live="polite">준비 완료</p>
+      <div class="image-wrap"><img id="generatedImage" alt="CGAN이 생성한 숫자 이미지" hidden></div>
+      <a id="downloadLink" hidden download="generated_digit.png">PNG 저장</a>
+    </section>
+    <section class="panel">
+      <h2>3. 음성 안내</h2>
+      <p>이미지 생성 후 TTS 안내 음성이 자동 재생된다. 브라우저 정책에 따라 재생 버튼을 눌러야 할 수 있다.</p>
+      <audio id="ttsAudio" controls></audio>
+    </section>
+  </main>
+</body>
+</html>

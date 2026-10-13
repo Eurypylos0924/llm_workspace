@@ -1,0 +1,7 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+data/
+models/*.pth
+models/sample_epoch_*.png
