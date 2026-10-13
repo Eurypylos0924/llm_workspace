@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>유튜브 내용 요약하기</title>
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+</head>
+<body>
+<h1>유튜브 내용 요약 서비스</h1>
+<input type="text" id="videoId" value="KPFVuGJ4WII" placeholder="유튜브 비디오 아이디를 입력하세요." size="20">
+<button id="submit">요약하기</button>
+
+<div id="status"></div>
+<div id="response" style="margin-top: 20px;"></div>
+
+<script>
+    document.getElementById('submit').addEventListener('click', () => {
+        const videoId = document.getElementById('videoId').value.trim();
+        if (!videoId) return alert('유튜브 비디오 아이디를 입력하세요.');
+
+        document.getElementById('status').innerHTML = '';
+        document.getElementById('response').innerHTML = '';
+
+        // 기존 EventSource 종료
+        if (window.eventSource) {
+            window.eventSource.close();
+        }
+
+        window.eventSource = new EventSource(`/youtube/summary/${videoId}`);
+        window.eventSource.onmessage = ({ data }) => {
+            const { status, message, token } = JSON.parse(data);
+            if (status === 'processing') {
+                document.getElementById('response').innerText += token;
+            } else {
+                updateStatus(message, status === 'downloading_audio');
+            }
+            if (status === 'complete') window.eventSource.close();
+        };
+
+        window.eventSource.onerror = () => {
+            updateStatus('오류 발생: 서버와 연결이 끊어졌습니다.');
+            window.eventSource.close();
+        };
+    });
+
+    function updateStatus(message, overwrite = false) {
+        if (overwrite) {
+            let downloadStatus = document.getElementById('download-status');
+            if (!downloadStatus) {
+                downloadStatus = document.createElement('div');
+                downloadStatus.id = 'download-status';
+                document.getElementById('status').appendChild(downloadStatus);
+            }
+            downloadStatus.innerText = message;
+        } else {
+            document.getElementById('status').innerHTML += `<div>${message}</div>`;
+        }
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+[실행순서]
+1.	프로젝트 폴더에 main1.py, yb_lib.py 파일복사
+2.	프로젝트 폴더에 static 폴더와 templates 폴더 생성
+3.	templates 폴더에 index1.html파일복사
+4.	메뉴 -> Terminal -> New Terminal
+5.	터미널에서 python main1.y 실행
+6.	브라우저에서 http://localhost:8000 번으로 테스트

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>유튜브 내용 요약하기</title>
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+</head>
+<body>
+<h1>유튜브 내용 요약 서비스</h1>
+<input type="text" id="videoId" value="KPFVuGJ4WII" placeholder="유튜브 비디오 아이디를 입력하세요." size="20">
+<button id="submit">요약하기</button>
+<div id="loader" style="display: none;">요약하는 중...</div>
+<div id="status"></div>
+<div id="response"></div>
+
+<script>
+    document.getElementById('submit').addEventListener('click', function() {
+        const videoId = document.getElementById('videoId').value;
+        const loader = document.getElementById('loader');
+        const status = document.getElementById('status');
+        const response = document.getElementById('response');
+
+        if (!videoId) {
+            alert('유튜브 비디오 아이디를 입력하세요.');
+            return;
+        }
+
+        // 초기화
+        response.innerHTML = '';
+        loader.style.display = 'block';
+
+        // 기존 EventSource가 있다면 닫기
+        if (window.eventSource) {
+            window.eventSource.close();
+        }
+
+        window.eventSource = new EventSource(`/youtube/summary/${videoId}`);    // 새로운 EventSource 생성
+
+        window.eventSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+
+            if (data.status !== 'processing' && data.status !== 'complete') {
+                status.innerText = data.message;
+            } // 다운로드 진행 중 메시지는 같은 줄에 덮어쓰기
+
+            if (data.status === 'processing') {
+                response.innerText += data.token;
+            } // 요약 진행 중인 경우
+
+            if (data.status === 'complete') {
+                loader.innerHTML = data.message;
+                status.innerHTML = '';
+                window.eventSource.close();
+            } // 요약 완료
+        };
+
+        window.eventSource.onerror = function(err) {
+            console.error('EventSource 오류:', err);
+            status.innerText = '<br>오류 발생: 서버와 연결이 끊어졌습니다.';
+            loader.style.display = 'none';
+            window.eventSource.close();
+        };
+    });
+</script>
+</body>
+</html>

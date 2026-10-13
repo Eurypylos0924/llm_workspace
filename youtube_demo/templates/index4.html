@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>유튜브 내용 요약하기</title>
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon" />
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+            padding: 40px;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #222;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        #videoId {
+            flex: 1;
+            padding: 10px 12px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 6px 0 0 6px;
+            outline: none;
+        }
+
+        #submit {
+            padding: 10px 16px;
+            font-size: 16px;
+            border: none;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            border-radius: 0 6px 6px 0;
+            transition: background-color 0.3s;
+        }
+
+        #submit:hover {
+            background-color: #45a049;
+        }
+
+        .section-title {
+            margin-top: 30px;
+            font-weight: bold;
+            font-size: 18px;
+            border-bottom: 2px solid #ccc;
+            padding-bottom: 6px;
+        }
+
+        #status {
+            margin-top: 12px;
+            padding: 12px;
+            background-color: #fff8dc;
+            border: 1px solid #f0e68c;
+            border-radius: 6px;
+            min-height: 24px;
+            line-height: 1.6;
+        }
+
+        #response {
+            margin-top: 12px;
+            padding: 16px;
+            background-color: #ffffff;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            line-height: 1.7;
+            white-space: pre-wrap;
+            color: #222;
+        }
+    </style>
+</head>
+<body>
+    <h1>유튜브 내용 요약 서비스</h1>
+    <div class="input-group">
+        <input type="text" id="videoId" value="KPFVuGJ4WII" placeholder="유튜브 비디오 아이디를 입력하세요." />
+        <button id="submit">요약하기</button>
+    </div>
+
+    <div class="section-title">진행 상태</div>
+    <div id="status"></div>
+
+    <div class="section-title">실행 결과</div>
+    <div id="response"></div>
+
+    <script>
+        document.getElementById('submit').addEventListener('click', () => {
+            const videoId = document.getElementById('videoId').value.trim();
+            if (!videoId) return alert('유튜브 비디오 아이디를 입력하세요.');
+
+            document.getElementById('status').innerHTML = '';
+            document.getElementById('response').innerHTML = '';
+
+            // 기존 EventSource 종료
+            if (window.eventSource) {
+                window.eventSource.close();
+            }
+
+            window.eventSource = new EventSource(`/youtube/summary/${videoId}`);
+            window.eventSource.onmessage = ({ data }) => {
+                const { status, message, token } = JSON.parse(data);
+                if (status === 'processing') {
+                    document.getElementById('response').innerText += token;
+                } else {
+                    updateStatus(message, status === 'downloading_audio');
+                }
+                if (status === 'complete') window.eventSource.close();
+            };
+
+            window.eventSource.onerror = () => {
+                updateStatus('오류 발생: 서버와 연결이 끊어졌습니다.');
+                window.eventSource.close();
+            };
+        });
+
+        function updateStatus(message, overwrite = false) {
+            if (overwrite) {
+                let downloadStatus = document.getElementById('download-status');
+                if (!downloadStatus) {
+                    downloadStatus = document.createElement('div');
+                    downloadStatus.id = 'download-status';
+                    document.getElementById('status').appendChild(downloadStatus);
+                }
+                downloadStatus.innerText = message;
+            } else {
+                const msgDiv = document.createElement('div');
+                msgDiv.innerText = message;
+                document.getElementById('status').appendChild(msgDiv);
+            }
+        }
+    </script>
+</body>
+</html>

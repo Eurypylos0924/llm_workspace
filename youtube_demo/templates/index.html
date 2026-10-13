@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h1>Welcome FastAPI</h1>
+    <h2>실시간 난수: <span id="random-number">대기 중...</span></h2>
+    <script>
+        const eventSource = new EventSource("/stream");
+        eventSource.onmessage = function(event) {
+            document.getElementById("random-number").innerText = event.data;
+        };
+    </script>
+</body>
+</html>
